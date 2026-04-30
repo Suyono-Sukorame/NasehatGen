@@ -26,7 +26,7 @@ import {
 } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
-import { GoogleGenAI } from "@google/genai";
+import { generateNasehatAction, rewriteNasehatAction } from '@/lib/actions/ai';
 
 interface ControlsProps {
   config: FlyerConfig;
@@ -87,16 +87,7 @@ export default function Controls({ config, setConfig, onExport, isExporting }: C
   const handleAiGenerate = async () => {
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY! });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: "Generate a short, powerful Islamic reminder/nasehat in Indonesian for an Instagram post. Include a headline, a quote (perkataan ulama or hadits summary), and the source. Keep it concise. Format the output as JSON with keys: headline, quote, source.",
-        config: {
-          responseMimeType: "application/json",
-        }
-      });
-      
-      const data = JSON.parse(response.text || '{}');
+      const data = await generateNasehatAction();
       if (data.headline && data.quote && data.source) {
         updateConfig({
           headline: data.headline,
@@ -114,14 +105,9 @@ export default function Controls({ config, setConfig, onExport, isExporting }: C
   const handleRewrite = async (tone: 'Tegas' | 'Lembut' | 'Motivasi') => {
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY! });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Rewrite this Islamic quote to be more ${tone} in tone while keeping the essence: "${config.quote}". Return ONLY the rewritten text.`,
-      });
-      
-      if (response.text) {
-        updateConfig({ quote: response.text.trim() });
+      const text = await rewriteNasehatAction(config.quote, tone);
+      if (text) {
+        updateConfig({ quote: text });
       }
     } catch (error) {
       console.error("AI Error:", error);
