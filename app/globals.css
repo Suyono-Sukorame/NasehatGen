@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-serif), ui-serif, Georgia, serif;
+  --font-display: var(--font-display), var(--font-sans), sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-zinc-200 outline-zinc-500;
+  }
+}
