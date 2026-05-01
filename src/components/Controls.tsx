@@ -39,6 +39,7 @@ const TABS = [
   { id: 'content', label: 'Content', icon: Type },
   { id: 'style', label: 'Design', icon: Settings2 },
   { id: 'background', label: 'Background', icon: ImageIcon },
+  { id: 'fx', label: 'Visual FX', icon: Sparkles },
   { id: 'presets', label: 'Presets', icon: Layout },
 ];
 
@@ -320,7 +321,7 @@ export default function Controls({ config, setConfig, onExport, isExporting }: C
             <div className="space-y-4">
               <h3 className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-bold">Accent Color</h3>
               <div className="flex flex-wrap gap-2">
-                {['#D4AF37', '#BFA100', '#FFFFFF', '#94A3B8', '#10B981'].map(color => (
+                {['#D4AF37', '#BFA100', '#FFFFFF', '#94A3B8', '#10B981', '#E11D48', '#2563EB'].map(color => (
                   <button
                     key={color}
                     onClick={() => updateConfig({ accentColor: color })}
@@ -331,6 +332,103 @@ export default function Controls({ config, setConfig, onExport, isExporting }: C
                     )}
                   />
                 ))}
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-6 border-t border-neutral-800">
+              <h3 className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-bold">Canvas Tools</h3>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Custom Font Size</label>
+                    <span className="text-[10px] font-mono text-neutral-500">{config.quoteFontSize === 0 ? 'Auto' : `${config.quoteFontSize}px`}</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="120" 
+                    step="2"
+                    value={config.quoteFontSize}
+                    onChange={(e) => updateConfig({ quoteFontSize: parseInt(e.target.value) })}
+                    className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#d4af37]"
+                  />
+                </div>
+                <button
+                  onClick={() => updateConfig({ elementPositions: { quote: { x: 0, y: 0 }, logo: { x: 0, y: 0 } } })}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded border border-neutral-800 bg-neutral-900 text-neutral-500 hover:text-neutral-200 hover:border-neutral-600 transition-all text-[10px] font-bold uppercase tracking-widest"
+                >
+                  <Undo2 size={12} />
+                  Reset Element Positions
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'fx' && (
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <h3 className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-bold">Background Filters</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { id: 'none', label: 'Normal' },
+                  { id: 'grayscale', label: 'B&W' },
+                  { id: 'sepia', label: 'Warm' },
+                  { id: 'darken', label: 'Low Key' }
+                ] as const).map(filter => (
+                  <button
+                    key={filter.id}
+                    onClick={() => updateConfig({ bgFilter: filter.id })}
+                    className={cn(
+                      "px-3 py-3 rounded border text-[10px] font-bold uppercase tracking-widest transition-all",
+                      config.bgFilter === filter.id 
+                        ? "bg-neutral-800 text-[#d4af37] border-[#d4af37]" 
+                        : "bg-neutral-900 text-neutral-500 border-neutral-800 hover:border-neutral-700"
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-6 pt-6 border-t border-neutral-800">
+              <h3 className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-bold">Lens Effects</h3>
+              
+              <div className="space-y-5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Blur Background</label>
+                  <button 
+                    onClick={() => updateConfig({ blurEffect: !config.blurEffect })}
+                    className={cn(
+                      "w-10 h-5 rounded-full transition-colors relative",
+                      config.blurEffect ? "bg-[#d4af37]" : "bg-neutral-800"
+                    )}
+                  >
+                    <div className={cn(
+                      "absolute top-1 w-3 h-3 rounded-full bg-white transition-all",
+                      config.blurEffect ? "left-6" : "left-1"
+                    )} />
+                  </button>
+                </div>
+
+                {config.blurEffect && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Blur Intensity</label>
+                      <span className="text-[10px] font-mono text-neutral-500">{config.blurAmount}px</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="40" 
+                      step="2"
+                      value={config.blurAmount}
+                      onChange={(e) => updateConfig({ blurAmount: parseInt(e.target.value) })}
+                      className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#d4af37]"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

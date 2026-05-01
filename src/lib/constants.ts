@@ -19,10 +19,17 @@ export interface FlyerConfig {
   overlayOpacity: number;
   gradientOverlay: boolean;
   blurEffect: boolean;
+  blurAmount: number;
+  bgFilter: 'none' | 'grayscale' | 'sepia' | 'darken';
   
   showTexture: boolean;
   showContentBox: boolean;
   accentColor: string;
+  quoteFontSize: number;
+  elementPositions: {
+    quote: { x: number; y: number };
+    logo: { x: number; y: number };
+  };
 }
 
 export interface PresetTemplate {

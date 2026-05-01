@@ -25,10 +25,17 @@ const INITIAL_CONFIG: FlyerConfig = {
   overlayOpacity: 0.6,
   gradientOverlay: true,
   blurEffect: false,
+  blurAmount: 10,
+  bgFilter: 'none',
   
   showTexture: true,
   showContentBox: false,
   accentColor: '#D4AF37',
+  quoteFontSize: 0, // 0 means auto
+  elementPositions: {
+    quote: { x: 0, y: 0 },
+    logo: { x: 0, y: 0 },
+  },
 };
 
 export default function Page() {
@@ -95,7 +102,7 @@ export default function Page() {
             animate={{ opacity: 1, y: 0 }}
             className="z-10 relative"
           >
-            <FlyerPreview config={config} previewRef={flyerRef} />
+            <FlyerPreview config={config} setConfig={setConfig} previewRef={flyerRef} />
           </motion.div>
         </AnimatePresence>
 
