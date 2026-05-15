@@ -128,22 +128,20 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
           )}>
             
             {/* Top Social Bar */}
-            <div className="absolute top-[-40px] left-0 right-0 flex items-center justify-between border-b border-white/10 pb-2 mb-8 w-full font-oswald pointer-events-none">
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold tracking-widest text-white/80">WWW.NASEHATGEN.COM</span>
-                <div className="h-3 w-[1px] bg-white/20" />
-                <div className="flex gap-2 text-[10px] text-white/60">
-                   <span className="material-symbols-outlined text-[12px]">public</span>
-                   <span className="material-symbols-outlined text-[12px]">camera_alt</span>
-                   <span className="material-symbols-outlined text-[12px]">send</span>
+            <div className="absolute top-[-30px] left-0 right-0 flex items-center justify-between w-full font-oswald pointer-events-none z-50">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold tracking-widest text-[#d4af37]">WWW.DEWANFATWA.COM</span>
+                <div className="h-4 w-[1px] bg-[#d4af37]/30 mx-1" />
+                <div className="flex gap-1.5 text-[#d4af37]">
+                   <span className="material-symbols-outlined text-[14px] border border-[#d4af37] rounded-sm p-[1px]">public</span>
+                   <span className="material-symbols-outlined text-[14px] border border-[#d4af37] rounded-sm p-[1px]">camera_alt</span>
+                   <span className="material-symbols-outlined text-[14px] border border-[#d4af37] rounded-sm p-[1px]">send</span>
                 </div>
-                <span className="text-[10px] font-bold text-white/80">@NASEHATGEN</span>
+                <span className="text-[11px] font-bold text-[#d4af37] tracking-tight ml-1">@DewanFatwaPA</span>
               </div>
-              {config.logo && (
-                 <div className="relative w-8 h-8 opacity-80 mix-blend-screen">
-                    <Image src={config.logo} alt="Logo" fill className="object-contain" />
-                 </div>
-              )}
+              <div className="relative w-12 h-12">
+                 <img src="https://res.cloudinary.com/dwehn7brt/image/upload/v1740000000/dewan-fatwa-logo.png" alt="Logo" className="w-full h-full object-contain opacity-90" onError={(e) => e.currentTarget.style.display = 'none'} />
+              </div>
             </div>
             
             {/* Draggable Logo */}
@@ -231,8 +229,19 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
             </div>
           </div>
         </div>
-        {/* Layer 5: Bottom Decorative Line */}
-        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent z-50" />
+        {/* Layer 5: Master Template Bottom Bar (Slanted) */}
+        <div className="absolute bottom-0 left-0 right-0 h-16 z-50 pointer-events-none overflow-hidden">
+           {/* Gold Slanted Base */}
+           <div 
+             className="absolute bottom-0 left-0 right-0 h-10 bg-[#d4af37]" 
+             style={{ clipPath: 'polygon(0 40%, 100% 0, 100% 100%, 0% 100%)' }}
+           />
+           {/* Black Slanted Overlay */}
+           <div 
+             className="absolute bottom-0 left-0 right-0 h-12 bg-[#121212]" 
+             style={{ clipPath: 'polygon(0 100%, 100% 60%, 100% 100%, 0% 100%)', transform: 'translateY(1px)' }}
+           />
+        </div>
       </div>
     </div>
   );
