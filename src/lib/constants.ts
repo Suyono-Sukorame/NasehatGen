@@ -22,10 +22,41 @@ export interface FlyerConfig {
   blurAmount: number;
   bgFilter: 'none' | 'grayscale' | 'sepia' | 'darken';
   
+  // Visual FX (Textures)
   showTexture: boolean;
+  textureType: 'none' | 'paper' | 'grain' | 'dust' | 'noise' | 'fiber' | 'matte' | 'canvas';
+  textureOpacity: number;
+  textureIntensity: number;
+  textureBlendMode: 'multiply' | 'screen' | 'overlay' | 'soft-light';
+  textureScale: number;
+
+  // Advanced Typography
+  quoteFontSize: number;
+  quoteLineHeight: number;
+  quoteLetterSpacing: number;
+  quoteWidth: number; // 0-100%
+  quoteFontWeight: number; // 300-800
+  quoteOpacity: number;
+
+  // Decorative Frames
+  frameStyle: 'standard' | 'double' | 'minimal' | 'ribbon' | 'glow';
+  frameColor: string;
+  frameOpacity: number;
+  frameSize: number;
+  frameRotation: number;
+  showFrame: boolean;
+
+  // Smart Shadow
+  shadowSoftness: number;
+  shadowBlur: number;
+  shadowDistance: number;
+  shadowOpacity: number;
+  shadowAngle: number;
+  shadowColor: string;
+
   showContentBox: boolean;
   accentColor: string;
-  quoteFontSize: number;
+  
   elementPositions: {
     quote: { x: number; y: number };
     logo: { x: number; y: number };

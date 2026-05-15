@@ -9,12 +9,14 @@ const inter = Inter({
 
 const oswald = Oswald({
   subsets: ['latin'],
-  variable: '--font-oswald',
+  variable: '--font-oswald-family',
+  weight: ['400', '500', '600', '700'],
 });
 
 const montserrat = Montserrat({
   subsets: ['latin'],
-  variable: '--font-montserrat',
+  variable: '--font-montserrat-family',
+  weight: ['400', '500', '600', '700'],
 });
 
 export const metadata: Metadata = {

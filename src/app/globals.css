@@ -2,8 +2,8 @@
 
 @theme {
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-oswald: var(--font-oswald), sans-serif;
-  --font-montserrat: var(--font-montserrat), sans-serif;
+  --font-oswald: var(--font-oswald-family), sans-serif;
+  --font-montserrat: var(--font-montserrat-family), sans-serif;
 }
 
 @layer base {

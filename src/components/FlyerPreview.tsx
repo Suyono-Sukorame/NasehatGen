@@ -94,9 +94,35 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
         {/* Layer 2: Texture Layer */}
         {config.showTexture && (
           <div 
-            className="absolute inset-0 opacity-5 z-10 pointer-events-none mix-blend-multiply"
-            style={{ backgroundImage: 'radial-gradient(#C5A059 0.5px, transparent 0.5px)', backgroundSize: '16px 16px' }}
-          />
+            className="absolute inset-0 z-10 pointer-events-none"
+            style={{ 
+              opacity: config.textureOpacity * config.textureIntensity,
+              mixBlendMode: config.textureBlendMode,
+              transform: `scale(${config.textureScale})`
+            }}
+          >
+            {config.textureType === 'paper' && (
+              <div className="absolute inset-0" style={{ backgroundImage: `url("https://www.transparenttextures.com/patterns/natural-paper.png")` }} />
+            )}
+            {config.textureType === 'grain' && (
+              <div className="absolute inset-0" style={{ backgroundImage: `url("https://www.transparenttextures.com/patterns/p6.png")` }} />
+            )}
+            {config.textureType === 'dust' && (
+              <div className="absolute inset-0" style={{ backgroundImage: `url("https://www.transparenttextures.com/patterns/stardust.png")` }} />
+            )}
+            {config.textureType === 'noise' && (
+              <div className="absolute inset-0" style={{ backgroundImage: `url("https://www.transparenttextures.com/patterns/white-diamond.png")` }} />
+            )}
+            {config.textureType === 'fiber' && (
+              <div className="absolute inset-0" style={{ backgroundImage: `url("https://www.transparenttextures.com/patterns/textured-paper.png")` }} />
+            )}
+            {config.textureType === 'matte' && (
+              <div className="absolute inset-0" style={{ backgroundImage: `url("https://www.transparenttextures.com/patterns/asfalt-light.png")` }} />
+            )}
+            {config.textureType === 'canvas' && (
+              <div className="absolute inset-0" style={{ backgroundImage: `url("https://www.transparenttextures.com/patterns/linen-paper.png")` }} />
+            )}
+          </div>
         )}
 
         {/* Layer 3: Overlays - Hidden or Adjusted for White Template */}
@@ -184,10 +210,19 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
             >
               <div
                 className={cn(
-                  "leading-snug text-black font-montserrat font-medium",
+                  "text-black transition-all duration-300",
+                  config.typography === 'serif' ? 'font-serif' : 'font-montserrat',
                   quoteFontSizeClass
                 )}
-                style={quoteFontSizeStyle}
+                style={{ 
+                  ...quoteFontSizeStyle,
+                  lineHeight: config.quoteLineHeight,
+                  letterSpacing: `${config.quoteLetterSpacing}em`,
+                  maxWidth: `${config.quoteWidth}%`,
+                  fontWeight: config.quoteFontWeight,
+                  opacity: config.quoteOpacity,
+                  textShadow: `${config.shadowDistance * Math.cos(config.shadowAngle * Math.PI / 180)}px ${config.shadowDistance * Math.sin(config.shadowAngle * Math.PI / 180)}px ${config.shadowBlur}px rgba(0,0,0,${config.shadowOpacity})`
+                }}
               >
                 {config.quote}
               </div>
@@ -222,19 +257,42 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
           </div>
         </div>
 
-        {/* Layer 5: Master Template Bottom Bar (Slanted Design matching SS 1) */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 z-50 pointer-events-none">
-           {/* Black Slanted Base - Bottom layer */}
-           <div 
-             className="absolute bottom-0 left-0 right-0 h-16 bg-black"
-             style={{ clipPath: 'polygon(0 0, 100% 60%, 100% 100%, 0 100%)' }}
-           />
-           {/* Gold Slanted Bar - Top layer */}
-           <div 
-             className="absolute bottom-8 left-0 right-0 h-4 bg-[#C5A059]"
-             style={{ clipPath: 'polygon(0 0, 100% 60%, 100% 100%, 0 100%)' }}
-           />
-        </div>
+        {/* Layer 5: Master Template Bottom Bar (Slanted Design Variations) */}
+        {config.showFrame && (
+          <div className="absolute bottom-0 left-0 right-0 h-24 z-50 pointer-events-none" style={{ opacity: config.frameOpacity }}>
+             {config.frameStyle === 'standard' && (
+               <>
+                 <div className="absolute bottom-0 left-0 right-0 h-16 bg-black" style={{ clipPath: 'polygon(0 0, 100% 60%, 100% 100%, 0 100%)' }} />
+                 <div className="absolute bottom-8 left-0 right-0 h-4" style={{ backgroundColor: config.frameColor, clipPath: 'polygon(0 0, 100% 60%, 100% 100%, 0 100%)' }} />
+               </>
+             )}
+             
+             {config.frameStyle === 'double' && (
+               <>
+                 <div className="absolute bottom-0 left-0 right-0 h-12 bg-black" style={{ clipPath: 'polygon(0 20%, 100% 0, 100% 100%, 0 100%)' }} />
+                 <div className="absolute bottom-12 left-0 right-0 h-4" style={{ backgroundColor: config.frameColor, clipPath: 'polygon(0 20%, 100% 0, 100% 100%, 0 100%)' }} />
+                 <div className="absolute bottom-16 left-0 right-0 h-8 bg-black/80" style={{ clipPath: 'polygon(0 40%, 100% 0, 100% 100%, 0 100%)' }} />
+               </>
+             )}
+
+             {config.frameStyle === 'minimal' && (
+               <div className="absolute bottom-4 left-12 right-12 h-1.5 rounded-full opacity-60" style={{ background: `linear-gradient(to right, transparent, ${config.frameColor}, transparent)` }} />
+             )}
+
+             {config.frameStyle === 'ribbon' && (
+               <div className="absolute bottom-0 left-0 right-0 h-20">
+                  <div className="absolute bottom-0 left-0 right-0 h-10 bg-black" style={{ clipPath: 'polygon(0 0, 50% 30%, 100% 0, 100% 100%, 0 100%)' }} />
+                  <div className="absolute bottom-10 left-0 right-0 h-2" style={{ backgroundColor: config.frameColor, clipPath: 'polygon(0 0, 50% 30%, 100% 0, 100% 100%, 0 100%)' }} />
+               </div>
+             )}
+
+             {config.frameStyle === 'glow' && (
+               <div className="absolute bottom-0 left-0 right-0 h-16 flex items-center justify-center">
+                  <div className="h-[2px] w-3/4 rounded-full blur-[2px]" style={{ backgroundColor: config.frameColor, boxShadow: `0 0 20px 5px ${config.frameColor}` }} />
+               </div>
+             )}
+          </div>
+        )}
 
       </div>
     </div>

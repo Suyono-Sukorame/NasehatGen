@@ -29,9 +29,36 @@ const INITIAL_CONFIG: FlyerConfig = {
   bgFilter: 'none',
   
   showTexture: true,
+  textureType: 'paper',
+  textureOpacity: 0.05,
+  textureIntensity: 0.5,
+  textureBlendMode: 'multiply',
+  textureScale: 1,
+
   showContentBox: false,
-  accentColor: '#D4AF37',
-  quoteFontSize: 0, // 0 means auto
+  accentColor: '#C5A059',
+  
+  quoteFontSize: 0, 
+  quoteLineHeight: 1.5,
+  quoteLetterSpacing: 0,
+  quoteWidth: 85,
+  quoteFontWeight: 500,
+  quoteOpacity: 1,
+
+  frameStyle: 'standard',
+  frameColor: '#C5A059',
+  frameOpacity: 1,
+  frameSize: 1,
+  frameRotation: 0,
+  showFrame: true,
+
+  shadowSoftness: 8,
+  shadowBlur: 10,
+  shadowDistance: 2,
+  shadowOpacity: 0.15,
+  shadowAngle: 45,
+  shadowColor: '#000000',
+
   elementPositions: {
     quote: { x: 0, y: 0 },
     logo: { x: 0, y: 0 },
