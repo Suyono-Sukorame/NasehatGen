@@ -9,7 +9,7 @@ import Image from 'next/image';
 
 interface FlyerPreviewProps {
   config: FlyerConfig;
-  setConfig: React.Dispatch<React.SetStateAction<FlyerConfig>>;
+  setConfig: (updates: Partial<FlyerConfig> | ((prev: FlyerConfig) => FlyerConfig), skipHistory?: boolean) => void;
   previewRef: React.RefObject<HTMLDivElement | null>;
 }
 

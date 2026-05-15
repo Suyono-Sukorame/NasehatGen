@@ -7,9 +7,9 @@ export function useHistory<T>(initialState: T, limit = 50) {
 
   const isUndoRedoAction = useRef(false);
 
-  const setState = useCallback((newS: T | ((prev: T) => T), skipHistory = false) => {
+  const setState = useCallback((newS: Partial<T> | ((prev: T) => T), skipHistory = false) => {
     _setState(prev => {
-      const next = typeof newS === 'function' ? (newS as any)(prev) : newS;
+      const next = typeof newS === 'function' ? (newS as any)(prev) : { ...prev, ...newS };
       
       if (isUndoRedoAction.current || skipHistory) {
         isUndoRedoAction.current = false;
