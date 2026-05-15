@@ -88,30 +88,52 @@ const INITIAL_CONFIG: FlyerConfig = {
   },
 };
 
+import { serializeConfig, deserializeConfig } from '@/lib/url-sync';
+
 export default function Page() {
   const { state: config, setState: setConfig, undo, redo, canUndo, canRedo } = useHistory<FlyerConfig>(INITIAL_CONFIG);
+  const [activeTab, setActiveTab] = useState('canvas');
   const [isExporting, setIsExporting] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'Saving...' | 'Saved' | 'Restored Draft' | null>(null);
   const [copyStatus, setCopyStatus] = useState<boolean>(false);
   const flyerRef = useRef<HTMLDivElement>(null);
 
-  // Auto Save Logic
+  // Initial URL Load
   useEffect(() => {
-    const saved = localStorage.getItem('nasehatgen_draft');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Ensure new fields exist in restored draft
-        const merged = { ...INITIAL_CONFIG, ...parsed };
-        setConfig(merged, true);
-        setSaveStatus('Restored Draft');
-        setTimeout(() => setSaveStatus(null), 3000);
-      } catch (e) {
-        console.error("Failed to restore draft", e);
+    const params = new URLSearchParams(window.location.search);
+    if (params.size > 0) {
+      const { config: urlConfig, activeTab: urlTab } = deserializeConfig(params, INITIAL_CONFIG);
+      setConfig(urlConfig, true);
+      setActiveTab(urlTab);
+    } else {
+      // Fallback to local storage only if no URL params
+      const saved = localStorage.getItem('nasehatgen_draft');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          const merged = { ...INITIAL_CONFIG, ...parsed };
+          setConfig(merged, true);
+          setSaveStatus('Restored Draft');
+          setTimeout(() => setSaveStatus(null), 3000);
+        } catch (e) {
+          console.error("Failed to restore draft", e);
+        }
       }
     }
-  }, []); // Only on mount
+  }, []);
 
+  // URL Sync Logic (Debounced)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const queryString = serializeConfig(config, activeTab);
+      const newUrl = `${window.location.pathname}?${queryString}`;
+      window.history.replaceState({ ...window.history.state }, '', newUrl);
+    }, 500);
+    
+    return () => clearTimeout(timeout);
+  }, [config, activeTab]);
+
+  // Auto Save Logic (LocalStorage fallback)
   useEffect(() => {
     if (config === INITIAL_CONFIG) return;
     setSaveStatus('Saving...');
@@ -214,6 +236,8 @@ export default function Page() {
         <Controls 
           config={config} 
           setConfig={setConfig} 
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
           onExport={handleExport}
           onCopy={handleCopyToClipboard}
           isExporting={isExporting}

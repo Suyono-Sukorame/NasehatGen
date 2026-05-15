@@ -36,6 +36,8 @@ import ExportTab from './tabs/ExportTab';
 interface ControlsProps {
   config: FlyerConfig;
   setConfig: (updates: Partial<FlyerConfig> | ((prev: FlyerConfig) => FlyerConfig), skipHistory?: boolean) => void;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
   onExport: () => void;
   onCopy: () => void;
   isExporting: boolean;
@@ -62,13 +64,14 @@ const TABS = [
 export default function Controls({ 
   config, 
   setConfig, 
+  activeTab,
+  setActiveTab,
   onExport, 
   onCopy,
   isExporting, 
   history, 
   saveStatus 
 }: ControlsProps) {
-  const [activeTab, setActiveTab] = useState('canvas');
   const [isGenerating, setIsGenerating] = useState(false);
   const [cropperImage, setCropperImage] = useState<string | null>(null);
 
