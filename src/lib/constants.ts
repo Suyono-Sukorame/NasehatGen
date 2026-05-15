@@ -58,8 +58,8 @@ export interface FlyerConfig {
   accentColor: string;
   
   elementPositions: {
-    quote: { x: number; y: number };
-    logo: { x: number; y: number };
+    quote: { x: number; y: number; scale: number; rotate: number };
+    logo: { x: number; y: number; scale: number; rotate: number };
   };
 }
 

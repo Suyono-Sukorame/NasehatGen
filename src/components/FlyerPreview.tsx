@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Facebook, Camera, Send, Twitter } from 'lucide-react';
 import { FlyerConfig, FONTS, BACKGROUND_PRESETS } from '@/lib/constants';
@@ -15,6 +15,7 @@ interface FlyerPreviewProps {
 
 export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [activeGuides, setActiveGuides] = useState<{ x: boolean; y: boolean }>({ x: false, y: false });
 
   const bgImage = useMemo(() => {
     if (config.backgroundMode === 'custom' && config.customBg) {
@@ -47,16 +48,22 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
   const quoteFontSizeStyle = config.quoteFontSize > 0 ? { fontSize: `${config.quoteFontSize}px` } : {};
 
   const handleDragEnd = (element: 'quote' | 'logo', info: any) => {
+    const tolerance = 15;
+    let newX = config.elementPositions[element].x + info.offset.x;
+    let newY = config.elementPositions[element].y + info.offset.y;
+
+    // Smart Snapping to Center
+    if (Math.abs(newX) < tolerance) newX = 0;
+    if (Math.abs(newY) < tolerance) newY = 0;
+
     setConfig(prev => ({
       ...prev,
       elementPositions: {
         ...prev.elementPositions,
-        [element]: {
-          x: prev.elementPositions[element].x + info.offset.x,
-          y: prev.elementPositions[element].y + info.offset.y
-        }
+        [element]: { x: newX, y: newY }
       }
     }));
+    setActiveGuides({ x: false, y: false });
   };
 
   return (
@@ -75,6 +82,22 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
           "shadow-[0_20px_50px_rgba(0,0,0,0.1)]"
         )}
       >
+        {/* Alignment Guides */}
+        <AnimatePresence>
+          {activeGuides.x && (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-[#C5A059] z-[100] pointer-events-none" 
+            />
+          )}
+          {activeGuides.y && (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute top-1/2 left-0 right-0 h-[1px] bg-[#C5A059] z-[100] pointer-events-none" 
+            />
+          )}
+        </AnimatePresence>
+
         {/* Layer 1: Background Image */}
         <div className="absolute inset-0 z-0">
           <Image
@@ -174,9 +197,19 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
                 drag
                 dragConstraints={containerRef}
                 dragElastic={0.1}
+                onDrag={(_, info) => {
+                  const x = config.elementPositions.logo.x + info.offset.x;
+                  const y = config.elementPositions.logo.y + info.offset.y;
+                  setActiveGuides({ x: Math.abs(x) < 15, y: Math.abs(y) < 15 });
+                }}
                 onDragEnd={(_, info) => handleDragEnd('logo', info)}
                 initial={config.elementPositions.logo}
-                animate={config.elementPositions.logo}
+                animate={{
+                  x: config.elementPositions.logo.x,
+                  y: config.elementPositions.logo.y,
+                  scale: config.elementPositions.logo.scale,
+                  rotate: config.elementPositions.logo.rotate
+                }}
                 className="cursor-move z-60 mb-4"
               >
                 <div className="relative w-16 h-16 opacity-90 drop-shadow-xl">
@@ -203,9 +236,19 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
               drag
               dragConstraints={containerRef}
               dragElastic={0.1}
+              onDrag={(_, info) => {
+                const x = config.elementPositions.quote.x + info.offset.x;
+                const y = config.elementPositions.quote.y + info.offset.y;
+                setActiveGuides({ x: Math.abs(x) < 15, y: Math.abs(y) < 15 });
+              }}
               onDragEnd={(_, info) => handleDragEnd('quote', info)}
               initial={config.elementPositions.quote}
-              animate={config.elementPositions.quote}
+              animate={{
+                x: config.elementPositions.quote.x,
+                y: config.elementPositions.quote.y,
+                scale: config.elementPositions.quote.scale,
+                rotate: config.elementPositions.quote.rotate
+              }}
               className="flex-1 flex items-center justify-center w-full cursor-move z-55"
             >
               <div

@@ -25,14 +25,22 @@ import {
   BACKGROUND_PRESETS 
 } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { generateNasehatAction, rewriteNasehatAction } from '@/lib/actions/ai';
 
 interface ControlsProps {
   config: FlyerConfig;
-  setConfig: React.Dispatch<React.SetStateAction<FlyerConfig>>;
+  setConfig: (updates: Partial<FlyerConfig> | ((prev: FlyerConfig) => FlyerConfig), skipHistory?: boolean) => void;
   onExport: () => void;
+  onCopy: () => void;
   isExporting: boolean;
+  history: {
+    undo: () => void;
+    redo: () => void;
+    canUndo: boolean;
+    canRedo: boolean;
+  };
+  saveStatus: 'Saving...' | 'Saved' | 'Restored Draft' | null;
 }
 
 const TABS = [
@@ -58,7 +66,15 @@ const SHADOW_PRESETS = [
   { id: 'depth', label: 'Elegant Depth', config: { shadowBlur: 15, shadowDistance: 8, shadowOpacity: 0.2, shadowAngle: 90 } },
 ] as const;
 
-export default function Controls({ config, setConfig, onExport, isExporting }: ControlsProps) {
+export default function Controls({ 
+  config, 
+  setConfig, 
+  onExport, 
+  onCopy,
+  isExporting, 
+  history, 
+  saveStatus 
+}: ControlsProps) {
   const [activeTab, setActiveTab] = useState('content');
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -132,174 +148,203 @@ export default function Controls({ config, setConfig, onExport, isExporting }: C
     }
   };
 
-  const handleShuffleBackground = () => {
-    const randomIndex = Math.floor(Math.random() * BACKGROUND_PRESETS.length);
-    const bg = BACKGROUND_PRESETS[randomIndex];
-    updateConfig({ backgroundMode: 'preset', bgPresetId: bg.id });
-  };
+  const SliderControl = ({ label, value, min, max, step, currentValue, onChange }: any) => (
+    <div className="space-y-2">
+      <div className="flex justify-between">
+        <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500">{label}</label>
+        <span className="text-[9px] font-mono text-neutral-300">{value}</span>
+      </div>
+      <input 
+        type="range" 
+        min={min} max={max} step={step} 
+        value={currentValue}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="w-full h-1 bg-neutral-800 rounded-full appearance-none cursor-pointer accent-[#C5A059]"
+      />
+    </div>
+  );
 
   return (
-    <div className="flex flex-col h-full bg-[#121212] text-neutral-200">
-      {/* Header */}
-      <div className="p-6 border-b border-neutral-800 bg-[#121212] sticky top-0 z-20">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-8 h-8 rounded-lg bg-[#d4af37] flex items-center justify-center shrink-0">
-            <span className="text-[#121212] font-bold text-xl">N</span>
+    <div className="flex flex-col h-full bg-[#0a0a0a] text-neutral-200 font-sans selection:bg-[#C5A059]/30">
+      {/* Premium Header with Workflow Controls */}
+      <div className="p-8 pb-4 bg-gradient-to-b from-neutral-900/50 to-transparent backdrop-blur-xl sticky top-0 z-20">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#C5A059] to-[#8B703C] flex items-center justify-center shrink-0 shadow-lg shadow-[#C5A059]/20">
+              <span className="text-white font-black text-2xl drop-shadow-sm">N</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-black tracking-tight text-white leading-none">
+                Nasehat<span className="text-[#C5A059]">Gen</span>
+              </h1>
+              <div className="flex items-center gap-2 mt-1.5">
+                <p className="text-[9px] text-neutral-500 uppercase tracking-[0.3em] font-black opacity-60">Creator Studio Pro</p>
+                <AnimatePresence>
+                  {saveStatus && (
+                    <motion.span 
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      className="text-[8px] text-[#C5A059] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-[#C5A059]/10"
+                    >
+                      • {saveStatus}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
           </div>
-          <h1 className="text-lg font-semibold tracking-tight">
-            Nasehat<span className="text-[#d4af37]">Gen</span>
-          </h1>
         </div>
-        <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Islamic Advice Generator</p>
+
+        {/* Workflow Action Bar */}
+        <div className="flex items-center justify-between gap-2 p-1 bg-neutral-900/80 rounded-2xl border border-white/5 shadow-inner">
+           <div className="flex gap-1">
+             <button 
+               onClick={history.undo} 
+               disabled={!history.canUndo}
+               className="p-2.5 rounded-xl text-neutral-500 hover:text-white hover:bg-white/5 disabled:opacity-20 transition-all group relative"
+               title="Undo (Ctrl+Z)"
+             >
+               <Undo2 size={16} />
+               <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-neutral-800 text-[8px] font-black text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">Ctrl + Z</span>
+             </button>
+             <button 
+               onClick={history.redo} 
+               disabled={!history.canRedo}
+               className="p-2.5 rounded-xl text-neutral-500 hover:text-white hover:bg-white/5 disabled:opacity-20 transition-all group relative"
+               title="Redo (Ctrl+Y)"
+             >
+               <Undo2 size={16} className="rotate-180" />
+               <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-neutral-800 text-[8px] font-black text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">Ctrl + Y</span>
+             </button>
+           </div>
+           
+           <div className="flex gap-1">
+              <button 
+                onClick={onCopy}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 transition-all group relative"
+              >
+                <Plus size={14} className="rotate-45" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Share</span>
+                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-neutral-800 text-[8px] font-black text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">Copy to Clipboard</span>
+              </button>
+           </div>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex px-3 py-3 border-b border-neutral-800 gap-1 overflow-x-auto scrollbar-hide bg-[#121212]">
-        {TABS.map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 text-[11px] font-bold uppercase tracking-widest rounded-md transition-all whitespace-nowrap",
-                isActive 
-                  ? "bg-[#d4af37] text-[#121212]" 
-                  : "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/50"
-              )}
-            >
-              <Icon size={14} />
-              {tab.label}
-            </button>
-          );
-        })}
+      {/* Modern Glass Tabs */}
+      <div className="px-4 py-2 sticky top-[152px] z-20">
+        <div className="flex p-1 bg-neutral-900/80 backdrop-blur-md rounded-2xl border border-white/5 gap-1 overflow-x-auto scrollbar-hide">
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap flex-1 justify-center",
+                  isActive 
+                    ? "bg-[#C5A059] text-white shadow-lg shadow-[#C5A059]/20" 
+                    : "text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+                )}
+              >
+                <Icon size={12} strokeWidth={2.5} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-32">
+      <div className="flex-1 overflow-y-auto p-6 space-y-10 pb-32 scroll-smooth">
         {activeTab === 'content' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-bold">Text Content</h3>
-              <button 
-                onClick={handleAiGenerate}
-                disabled={isGenerating}
-                className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-[#d4af37] border border-[#d4af37]/30 bg-[#d4af37]/5 px-3 py-1.5 rounded hover:bg-[#d4af37]/10 transition-colors disabled:opacity-50"
-              >
-                <Sparkles size={11} />
-                {isGenerating ? "Wait..." : "AI Generate"}
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">Main Title</label>
-                <input 
-                  type="text" 
-                  value={config.headline}
-                  onChange={(e) => updateConfig({ headline: e.target.value })}
-                  placeholder="e.g. ADAB BERTEMAN"
-                  className="w-full px-4 py-2.5 bg-neutral-900 border border-neutral-800 rounded text-neutral-200 focus:border-[#d4af37] outline-none text-sm transition-colors"
-                />
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Content Editor</h3>
+                <button 
+                  onClick={handleAiGenerate}
+                  disabled={isGenerating}
+                  className="flex items-center gap-2 text-[10px] font-black uppercase text-white bg-gradient-to-r from-[#C5A059] to-[#8B703C] px-4 py-2 rounded-xl shadow-lg shadow-[#C5A059]/10 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  <Sparkles size={12} fill="currentColor" />
+                  {isGenerating ? "Crafting..." : "AI Generate"}
+                </button>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">Quote Text</label>
-                <textarea 
-                  rows={5}
-                  value={config.quote}
-                  onChange={(e) => updateConfig({ quote: e.target.value })}
-                  placeholder="Paste your nasehat text here..."
-                  className="w-full px-4 py-2.5 bg-neutral-900 border border-neutral-800 rounded text-neutral-200 focus:border-[#d4af37] outline-none text-sm resize-none transition-colors"
-                />
-                <div className="flex gap-1.5">
-                  {(['Tegas', 'Lembut', 'Motivasi'] as const).map(tone => (
-                    <button
-                      key={tone}
-                      onClick={() => handleRewrite(tone)}
-                      className="text-[9px] font-bold uppercase tracking-wider px-2 py-1 bg-neutral-800 text-neutral-400 border border-neutral-700 rounded hover:text-neutral-200 hover:border-neutral-500 transition-colors"
-                    >
-                      {tone}
-                    </button>
-                  ))}
+              <div className="space-y-5">
+                <div className="space-y-2.5">
+                  <label className="text-[10px] font-black tracking-widest text-neutral-500 uppercase ml-1">Main Headline</label>
+                  <input 
+                    type="text" 
+                    value={config.headline}
+                    onChange={(e) => updateConfig({ headline: e.target.value })}
+                    className="w-full px-5 py-3.5 bg-neutral-900/50 border border-white/5 rounded-2xl text-white focus:border-[#C5A059]/50 focus:ring-4 focus:ring-[#C5A059]/5 outline-none text-sm transition-all placeholder:text-neutral-700"
+                  />
+                </div>
+
+                <div className="space-y-2.5">
+                  <label className="text-[10px] font-black tracking-widest text-neutral-500 uppercase ml-1">The Advice (Quote)</label>
+                  <textarea 
+                    rows={5}
+                    value={config.quote}
+                    onChange={(e) => updateConfig({ quote: e.target.value })}
+                    className="w-full px-5 py-3.5 bg-neutral-900/50 border border-white/5 rounded-2xl text-white focus:border-[#C5A059]/50 focus:ring-4 focus:ring-[#C5A059]/5 outline-none text-sm resize-none transition-all placeholder:text-neutral-700 leading-relaxed"
+                  />
+                  <div className="flex gap-2">
+                    {(['Tegas', 'Lembut', 'Motivasi'] as const).map(tone => (
+                      <button
+                        key={tone}
+                        onClick={() => handleRewrite(tone)}
+                        className="flex-1 text-[9px] font-black uppercase tracking-wider py-2 bg-neutral-900 border border-white/5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all active:scale-95"
+                      >
+                        {tone}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <label className="text-[10px] font-black tracking-widest text-neutral-500 uppercase ml-1">Reference</label>
+                  <input 
+                    type="text" 
+                    value={config.source}
+                    onChange={(e) => updateConfig({ source: e.target.value })}
+                    className="w-full px-5 py-3.5 bg-neutral-900/50 border border-white/5 rounded-2xl text-white focus:border-[#C5A059]/50 focus:ring-4 focus:ring-[#C5A059]/5 outline-none text-sm transition-all"
+                  />
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">Source / Reference</label>
-                <input 
-                  type="text" 
-                  value={config.source}
-                  onChange={(e) => updateConfig({ source: e.target.value })}
-                  placeholder="e.g. HR. Bukhari & Muslim"
-                  className="w-full px-4 py-2.5 bg-neutral-900 border border-neutral-800 rounded text-neutral-200 focus:border-[#d4af37] outline-none text-sm transition-colors"
-                />
-              </div>
             </div>
 
-            {/* Quick Background Section */}
-            <div className="pt-6 space-y-4 border-t border-neutral-800">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-bold">Quick Background</h3>
-                <button 
-                  onClick={handleShuffleBackground}
-                  className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-neutral-400 hover:text-white transition-colors"
-                >
-                  <Undo2 size={11} className="rotate-180" />
-                  Shuffle
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-4 gap-2">
-                {BACKGROUND_PRESETS.map(bg => (
-                  <button
-                    key={bg.id}
-                    onClick={() => updateConfig({ backgroundMode: 'preset', bgPresetId: bg.id })}
-                    className={cn(
-                      "relative aspect-square rounded overflow-hidden border-2 transition-all group",
-                      config.bgPresetId === bg.id && config.backgroundMode === 'preset'
-                        ? "border-[#d4af37]" 
-                        : "border-transparent opacity-50 hover:opacity-100"
-                    )}
-                  >
-                    <Image src={bg.url} alt={bg.name} fill className="object-cover" unoptimized />
-                  </button>
-                ))}
-                <button
-                  {...getBgProps()}
-                  className="aspect-square rounded border-2 border-dashed border-neutral-800 flex items-center justify-center bg-neutral-900/50 hover:border-neutral-600 transition-colors"
-                >
-                  <input {...getBgInputProps()} />
-                  <Plus size={16} className="text-neutral-600" />
-                </button>
-              </div>
-            </div>
-
-            <div className="pt-6 space-y-4 border-t border-neutral-800">
-              <label className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">Branding Logo</label>
+            <div className="pt-8 space-y-6 border-t border-white/5">
+              <label className="text-[10px] font-black tracking-widest text-neutral-500 uppercase ml-1">Branding Identity</label>
               <div 
                 {...getLogoProps()} 
-                className="w-full p-4 border border-neutral-800 rounded bg-neutral-900/50 flex items-center justify-center gap-3 cursor-pointer hover:border-neutral-700 transition-colors"
+                className="w-full p-5 border-2 border-dashed border-neutral-800 rounded-2xl bg-neutral-900/30 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[#C5A059]/30 hover:bg-[#C5A059]/5 transition-all group"
               >
                 <input {...getLogoInputProps()} />
                 {config.logo ? (
-                  <div className="flex items-center gap-3 w-full">
-                    <div className="relative w-8 h-8 shrink-0">
+                  <div className="flex items-center gap-4 w-full">
+                    <div className="relative w-12 h-12 shrink-0 rounded-lg overflow-hidden bg-white/5 p-2">
                       <Image src={config.logo} alt="Logo Preview" fill className="object-contain" />
                     </div>
-                    <span className="text-[10px] font-bold uppercase text-neutral-500 truncate flex-1">Logo set</span>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-black uppercase text-white tracking-widest">Brand Logo Active</p>
+                      <p className="text-[8px] text-neutral-600 font-bold uppercase mt-0.5">Click to change</p>
+                    </div>
                     <button 
                       onClick={(e) => { e.stopPropagation(); updateConfig({ logo: null }); }}
-                      className="p-1 text-neutral-600 hover:text-red-400"
+                      className="p-2 text-neutral-700 hover:text-red-500 bg-black/20 rounded-xl transition-colors"
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 ) : (
                   <>
-                    <ImageIcon size={14} className="text-neutral-600" />
-                    <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Upload Logo</span>
+                    <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                       <Plus size={20} className="text-neutral-500" />
+                    </div>
+                    <span className="text-[10px] text-neutral-500 font-black uppercase tracking-[0.2em]">Upload Studio Logo</span>
                   </>
                 )}
               </div>
@@ -359,6 +404,27 @@ export default function Controls({ config, setConfig, onExport, isExporting }: C
                 <SliderControl label="Distance" value={config.shadowDistance} min={0} max={20} step={1} currentValue={config.shadowDistance} onChange={(v: number) => updateConfig({ shadowDistance: v })} />
                 <SliderControl label="Opacity" value={config.shadowOpacity} min={0} max={1} step={0.05} currentValue={config.shadowOpacity} onChange={(v: number) => updateConfig({ shadowOpacity: v })} />
                 <SliderControl label="Angle" value={`${config.shadowAngle}°`} min={0} max={360} step={1} currentValue={config.shadowAngle} onChange={(v: number) => updateConfig({ shadowAngle: v })} />
+              </div>
+            </div>
+
+            {/* Frame Variations Section */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Layout Transformations</h3>
+              </div>
+              
+              <div className="space-y-6 bg-neutral-900/30 p-5 rounded-2xl border border-white/5">
+                <div className="space-y-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-neutral-600 mb-2">Quote Element</p>
+                  <SliderControl label="Quote Scale" value={config.elementPositions.quote.scale} min={0.5} max={2} step={0.1} currentValue={config.elementPositions.quote.scale} onChange={(v: number) => setConfig(prev => ({ ...prev, elementPositions: { ...prev.elementPositions, quote: { ...prev.elementPositions.quote, scale: v } } }))} />
+                  <SliderControl label="Quote Rotate" value={`${config.elementPositions.quote.rotate}°`} min={-180} max={180} step={1} currentValue={config.elementPositions.quote.rotate} onChange={(v: number) => setConfig(prev => ({ ...prev, elementPositions: { ...prev.elementPositions, quote: { ...prev.elementPositions.quote, rotate: v } } }))} />
+                  
+                  <div className="pt-4 border-t border-white/5">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-neutral-600 mb-2">Logo Element</p>
+                    <SliderControl label="Logo Scale" value={config.elementPositions.logo.scale} min={0.5} max={2} step={0.1} currentValue={config.elementPositions.logo.scale} onChange={(v: number) => setConfig(prev => ({ ...prev, elementPositions: { ...prev.elementPositions, logo: { ...prev.elementPositions.logo, scale: v } } }))} />
+                    <SliderControl label="Logo Rotate" value={`${config.elementPositions.logo.rotate}°`} min={-180} max={180} step={1} currentValue={config.elementPositions.logo.rotate} onChange={(v: number) => setConfig(prev => ({ ...prev, elementPositions: { ...prev.elementPositions, logo: { ...prev.elementPositions.logo, rotate: v } } }))} />
+                  </div>
+                </div>
               </div>
             </div>
 

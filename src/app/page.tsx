@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Controls from '@/components/Controls';
 import FlyerPreview from '@/components/FlyerPreview';
 import { FlyerConfig, BACKGROUND_PRESETS } from '@/lib/constants';
-import { toPng } from 'html-to-image';
+import { toPng, toBlob } from 'html-to-image';
 import { motion, AnimatePresence } from 'motion/react';
+import { useHistory } from '@/hooks/useHistory';
 
 const INITIAL_CONFIG: FlyerConfig = {
   headline: 'ADAB BERTEMAN',
@@ -60,24 +61,49 @@ const INITIAL_CONFIG: FlyerConfig = {
   shadowColor: '#000000',
 
   elementPositions: {
-    quote: { x: 0, y: 0 },
-    logo: { x: 0, y: 0 },
+    quote: { x: 0, y: 0, scale: 1, rotate: 0 },
+    logo: { x: 0, y: 0, scale: 1, rotate: 0 },
   },
 };
 
 export default function Page() {
-  const [config, setConfig] = useState<FlyerConfig>(INITIAL_CONFIG);
+  const { state: config, setState: setConfig, undo, redo, canUndo, canRedo } = useHistory<FlyerConfig>(INITIAL_CONFIG);
   const [isExporting, setIsExporting] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'Saving...' | 'Saved' | 'Restored Draft' | null>(null);
+  const [copyStatus, setCopyStatus] = useState<boolean>(false);
   const flyerRef = useRef<HTMLDivElement>(null);
+
+  // Auto Save Logic
+  useEffect(() => {
+    const saved = localStorage.getItem('nasehatgen_draft');
+    if (saved) {
+      try {
+        setConfig(JSON.parse(saved), true);
+        setSaveStatus('Restored Draft');
+        setTimeout(() => setSaveStatus(null), 3000);
+      } catch (e) {
+        console.error("Failed to restore draft", e);
+      }
+    }
+  }, []); // Only on mount
+
+  useEffect(() => {
+    if (config === INITIAL_CONFIG) return;
+    setSaveStatus('Saving...');
+    const timeout = setTimeout(() => {
+      localStorage.setItem('nasehatgen_draft', JSON.stringify(config));
+      setSaveStatus('Saved');
+      setTimeout(() => setSaveStatus(prev => prev === 'Saved' ? null : prev), 2000);
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [config]);
 
   const handleExport = async () => {
     if (!flyerRef.current) return;
     
     setIsExporting(true);
     try {
-      // Small delay to ensure any pending renders are settled
       await new Promise(resolve => setTimeout(resolve, 500));
-      
       const dataUrl = await toPng(flyerRef.current, {
         cacheBust: true,
         width: 1080,
@@ -102,59 +128,101 @@ export default function Page() {
     }
   };
 
+  const handleCopyToClipboard = async () => {
+    if (!flyerRef.current) return;
+    
+    setIsExporting(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const blob = await toBlob(flyerRef.current, {
+        cacheBust: true,
+        width: 1080,
+        height: 1350,
+        style: {
+          transform: 'scale(1)',
+          width: '1080px',
+          height: '1350px',
+          maxWidth: 'none',
+          maxHeight: 'none',
+        }
+      });
+
+      if (blob) {
+        const item = new ClipboardItem({ 'image/png': blob });
+        await navigator.clipboard.write([item]);
+        setCopyStatus(true);
+        setTimeout(() => setCopyStatus(false), 2000);
+      }
+    } catch (error) {
+      console.error('Clipboard copy failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
-    <main className="flex h-screen overflow-hidden bg-[#0a0a0a] text-neutral-200">
-      {/* Left Sidebar - Fixed width */}
-      <div className="w-full md:w-80 flex-shrink-0 z-10 border-r border-neutral-800 relative">
+    <main className="flex h-screen overflow-hidden bg-[#0a0a0a] text-neutral-200 selection:bg-[#C5A059]/30">
+      {/* Left Sidebar */}
+      <div className="w-full md:w-80 flex-shrink-0 z-10 border-r border-neutral-800 relative shadow-2xl">
         <Controls 
           config={config} 
           setConfig={setConfig} 
           onExport={handleExport}
+          onCopy={handleCopyToClipboard}
           isExporting={isExporting}
+          history={{ undo, redo, canUndo, canRedo }}
+          saveStatus={saveStatus}
         />
       </div>
 
-      {/* Main Preview Area - Flexible content */}
-      <div className="flex-1 relative overflow-auto bg-[#0f0f0f] flex flex-col items-center justify-center min-h-0">
-        <div className="absolute top-6 left-6 text-[10px] uppercase tracking-[0.2em] text-neutral-600 font-bold">Preview Mode: Instagram Portrait (4:5)</div>
-        
-        {/* Subtle background ambient light */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#d4af37]/5 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-white/5 rounded-full blur-[120px] pointer-events-none" />
+      {/* Main Preview Area */}
+      <div className="flex-1 relative overflow-auto bg-[#0d0d0d] flex flex-col items-center justify-center min-h-0 pattern-dots">
+        {/* Top Status Bar */}
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-neutral-900/50 backdrop-blur-md px-4 py-2 rounded-full border border-white/5 z-20">
+           <div className="flex items-center gap-2">
+             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400">Live Preview</span>
+           </div>
+           <div className="w-[1px] h-3 bg-white/10" />
+           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-600">1080 x 1350</span>
+        </div>
+
+        {/* Ambient Background Lights */}
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-[#C5A059]/5 rounded-full blur-[150px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-white/[0.02] rounded-full blur-[150px] pointer-events-none" />
 
         <AnimatePresence mode="wait">
           <motion.div 
             key="preview-container"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="z-10 relative"
           >
             <FlyerPreview config={config} setConfig={setConfig} previewRef={flyerRef} />
           </motion.div>
         </AnimatePresence>
 
-        {/* Floating Tooltip */}
-        <div className="fixed bottom-8 right-8 z-20 pointer-events-none hidden lg:block">
-          <div className="bg-white/80 backdrop-blur-md px-6 py-4 rounded-2xl shadow-xl border border-white/40 flex items-center gap-4 animate-bounce">
-            <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white font-bold">!</div>
-            <div>
-              <p className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Preview Active</p>
-              <p className="text-[10px] text-zinc-500 font-medium">Auto-scaled for display. Exports at 1080x1350.</p>
-            </div>
-          </div>
-        </div>
+        {/* Success Toasts */}
+        <AnimatePresence>
+          {copyStatus && (
+            <motion.div 
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 bg-[#C5A059] text-white px-6 py-3 rounded-2xl shadow-2xl shadow-[#C5A059]/40 flex items-center gap-3 font-black uppercase tracking-widest text-xs"
+            >
+              <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">✓</div>
+              Copied to Clipboard
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <style jsx global>{`
-        .pattern-grid {
-          background-image: 
-            linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px);
-          background-size: 40px 40px;
-        }
         .pattern-dots {
-          background-image: radial-gradient(rgba(0,0,0,0.1) 1px, transparent 1px);
-          background-size: 20px 20px;
+          background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+          background-size: 32px 32px;
         }
       `}</style>
     </main>
