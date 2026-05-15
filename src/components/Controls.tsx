@@ -36,7 +36,7 @@ interface ControlsProps {
 }
 
 const TABS = [
-  { id: 'content', label: 'Content', icon: Type },
+  { id: 'content', label: 'Quick Edit', icon: Type },
   { id: 'style', label: 'Design', icon: Settings2 },
   { id: 'background', label: 'Background', icon: ImageIcon },
   { id: 'fx', label: 'Visual FX', icon: Sparkles },
@@ -115,6 +115,12 @@ export default function Controls({ config, setConfig, onExport, isExporting }: C
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleShuffleBackground = () => {
+    const randomIndex = Math.floor(Math.random() * BACKGROUND_PRESETS.length);
+    const bg = BACKGROUND_PRESETS[randomIndex];
+    updateConfig({ backgroundMode: 'preset', bgPresetId: bg.id });
   };
 
   return (
@@ -217,8 +223,46 @@ export default function Controls({ config, setConfig, onExport, isExporting }: C
               </div>
             </div>
 
-            <div className="space-y-4">
-              <label className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">Logo Upload</label>
+            {/* Quick Background Section */}
+            <div className="pt-6 space-y-4 border-t border-neutral-800">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-bold">Quick Background</h3>
+                <button 
+                  onClick={handleShuffleBackground}
+                  className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-neutral-400 hover:text-white transition-colors"
+                >
+                  <Undo2 size={11} className="rotate-180" />
+                  Shuffle
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-4 gap-2">
+                {BACKGROUND_PRESETS.map(bg => (
+                  <button
+                    key={bg.id}
+                    onClick={() => updateConfig({ backgroundMode: 'preset', bgPresetId: bg.id })}
+                    className={cn(
+                      "relative aspect-square rounded overflow-hidden border-2 transition-all group",
+                      config.bgPresetId === bg.id && config.backgroundMode === 'preset'
+                        ? "border-[#d4af37]" 
+                        : "border-transparent opacity-50 hover:opacity-100"
+                    )}
+                  >
+                    <Image src={bg.url} alt={bg.name} fill className="object-cover" unoptimized />
+                  </button>
+                ))}
+                <button
+                  {...getBgProps()}
+                  className="aspect-square rounded border-2 border-dashed border-neutral-800 flex items-center justify-center bg-neutral-900/50 hover:border-neutral-600 transition-colors"
+                >
+                  <input {...getBgInputProps()} />
+                  <Plus size={16} className="text-neutral-600" />
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-6 space-y-4 border-t border-neutral-800">
+              <label className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">Branding Logo</label>
               <div 
                 {...getLogoProps()} 
                 className="w-full p-4 border border-neutral-800 rounded bg-neutral-900/50 flex items-center justify-center gap-3 cursor-pointer hover:border-neutral-700 transition-colors"
@@ -243,29 +287,6 @@ export default function Controls({ config, setConfig, onExport, isExporting }: C
                     <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Upload Logo</span>
                   </>
                 )}
-              </div>
-            </div>
-
-            <div className="pt-6 space-y-4 border-t border-neutral-800">
-              <h3 className="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-bold">Extra Details</h3>
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">Social Handle</label>
-                <input 
-                  type="text" 
-                  value={config.socialHandle}
-                  onChange={(e) => updateConfig({ socialHandle: e.target.value })}
-                  placeholder="@dailynasehat"
-                  className="w-full px-4 py-2.5 bg-neutral-900 border border-neutral-800 rounded text-neutral-200 focus:border-[#d4af37] outline-none text-sm transition-colors"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold tracking-wider text-neutral-400 uppercase">Footer Caption</label>
-                <input 
-                  type="text" 
-                  value={config.footer}
-                  onChange={(e) => updateConfig({ footer: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-neutral-900 border border-neutral-800 rounded text-neutral-200 focus:border-[#d4af37] outline-none text-sm transition-colors"
-                />
               </div>
             </div>
           </div>

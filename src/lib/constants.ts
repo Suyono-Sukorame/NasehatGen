@@ -40,9 +40,11 @@ export interface PresetTemplate {
 }
 
 export const FONTS = {
-  serif: 'font-serif',
-  sans: 'font-sans',
-  display: 'font-display', // I'll map this to something bold in CSS
+  oswald: 'font-oswald',
+  montserrat: 'font-montserrat',
+  serif: 'font-serif', // fallback
+  sans: 'font-sans',   // fallback
+  display: 'font-oswald',
 };
 
 export const PRESETS: PresetTemplate[] = [

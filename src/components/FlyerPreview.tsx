@@ -127,6 +127,25 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
             config.textAlign === 'center' ? "items-center text-center" : "items-start text-left"
           )}>
             
+            {/* Top Social Bar */}
+            <div className="absolute top-[-40px] left-0 right-0 flex items-center justify-between border-b border-white/10 pb-2 mb-8 w-full font-oswald pointer-events-none">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold tracking-widest text-white/80">WWW.NASEHATGEN.COM</span>
+                <div className="h-3 w-[1px] bg-white/20" />
+                <div className="flex gap-2 text-[10px] text-white/60">
+                   <span className="material-symbols-outlined text-[12px]">public</span>
+                   <span className="material-symbols-outlined text-[12px]">camera_alt</span>
+                   <span className="material-symbols-outlined text-[12px]">send</span>
+                </div>
+                <span className="text-[10px] font-bold text-white/80">@NASEHATGEN</span>
+              </div>
+              {config.logo && (
+                 <div className="relative w-8 h-8 opacity-80 mix-blend-screen">
+                    <Image src={config.logo} alt="Logo" fill className="object-contain" />
+                 </div>
+              )}
+            </div>
+            
             {/* Draggable Logo */}
             {config.logo && (
               <motion.div
@@ -151,10 +170,7 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
                 key={config.headline}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={cn(
-                  "uppercase tracking-[0.4em] text-[10px] font-bold mb-4",
-                  FONTS[config.typography]
-                )}
+                className="uppercase tracking-[0.2em] text-[24px] font-bold mb-4 font-oswald"
                 style={{ color: config.accentColor }}
               >
                 {config.headline || "DAILY NASEHAT"}
@@ -173,9 +189,8 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
             >
               <div
                 className={cn(
-                  "leading-tight italic text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]",
-                  quoteFontSizeClass,
-                  FONTS[config.typography]
+                  "leading-snug text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] font-montserrat",
+                  quoteFontSizeClass
                 )}
                 style={quoteFontSizeStyle}
               >
@@ -185,37 +200,39 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
 
             {/* Source & Footer (Static at bottom for balance) */}
             <div className="w-full space-y-12 pointer-events-none mt-auto">
-              <div className="flex items-center gap-3 justify-center">
-                <div className="h-[1px] w-4 bg-neutral-800" />
+              <div className="flex items-start gap-4 justify-center">
+                <span className="material-symbols-outlined text-[40px] text-white/20 -mt-2">format_quote</span>
+                <div className="flex flex-col gap-1 items-center">
+                  <div className="h-[1px] w-4 bg-neutral-800" />
                 <motion.p 
                   key={config.source}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className={cn(
-                    "text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400",
-                    FONTS[config.typography]
-                  )}
+                  className="text-[11px] font-bold uppercase tracking-[0.1em] text-neutral-400 font-oswald"
                 >
                   {config.source}
                 </motion.p>
                 <div className="h-[1px] w-4 bg-neutral-800" />
+                </div>
               </div>
 
               <div className="flex justify-between items-end w-full">
                 <div className="text-left space-y-1">
-                  <p className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Official Account</p>
-                  <p className="text-[10px] font-bold text-neutral-400 tracking-tight">{config.socialHandle || "@usernasehat"}</p>
+                  <p className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold font-oswald">Official Account</p>
+                  <p className="text-[10px] font-bold text-neutral-400 tracking-tight font-oswald">{config.socialHandle || "@usernasehat"}</p>
                 </div>
                 {config.footer && (
                   <div className="text-right space-y-1">
-                    <p className="text-[8px] uppercase tracking-widest text-[#d4af37] font-bold">Reminder</p>
-                    <p className="text-[10px] font-bold text-neutral-400 tracking-tight">{config.footer}</p>
+                    <p className="text-[8px] uppercase tracking-widest text-[#d4af37] font-bold font-oswald">Reminder</p>
+                    <p className="text-[10px] font-bold text-neutral-400 tracking-tight font-oswald">{config.footer}</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
         </div>
+        {/* Layer 5: Bottom Decorative Line */}
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent z-50" />
       </div>
     </div>
   );
