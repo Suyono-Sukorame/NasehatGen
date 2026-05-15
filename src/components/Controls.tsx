@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useDropzone } from 'react-dropzone';
-import Image from 'next/image';
 import { 
   Settings2, 
   Type, 
@@ -10,23 +8,30 @@ import {
   Layout, 
   Sparkles, 
   Download,
-  AlignCenter,
-  AlignLeft,
-  ChevronRight,
   Plus,
-  Trash2,
-  Undo2
+  Undo2,
+  Maximize,
+  Share2,
+  ChevronRight
 } from 'lucide-react';
 import { 
   FlyerConfig, 
-  TypographyStyle, 
-  Alignment, 
   PRESETS, 
-  BACKGROUND_PRESETS 
+  ASPECT_RATIO_PRESETS,
 } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateNasehatAction, rewriteNasehatAction } from '@/lib/actions/ai';
+import ImageCropper from './ImageCropper';
+
+// Modular Tab Components
+import CanvasTab from './tabs/CanvasTab';
+import QuickEditTab from './tabs/QuickEditTab';
+import DesignTab from './tabs/DesignTab';
+import BackdropTab from './tabs/BackdropTab';
+import VisualFXTab from './tabs/VisualFXTab';
+import BrandingTab from './tabs/BrandingTab';
+import ExportTab from './tabs/ExportTab';
 
 interface ControlsProps {
   config: FlyerConfig;
@@ -44,27 +49,15 @@ interface ControlsProps {
 }
 
 const TABS = [
+  { id: 'canvas', label: 'Canvas', icon: Maximize },
   { id: 'content', label: 'Quick Edit', icon: Type },
   { id: 'style', label: 'Design', icon: Settings2 },
-  { id: 'background', label: 'Background', icon: ImageIcon },
+  { id: 'background', label: 'Backdrop', icon: ImageIcon },
   { id: 'fx', label: 'Visual FX', icon: Sparkles },
+  { id: 'branding', label: 'Branding', icon: Share2 },
+  { id: 'export', label: 'Export', icon: Download },
   { id: 'presets', label: 'Presets', icon: Layout },
 ];
-
-const TYPOGRAPHY_PRESETS = [
-  { id: 'elegant', label: 'Elegant', config: { typography: 'serif', quoteFontWeight: 400, quoteLineHeight: 1.8, quoteLetterSpacing: 0.05 } },
-  { id: 'minimal', label: 'Minimal', config: { typography: 'sans', quoteFontWeight: 300, quoteLineHeight: 1.4, quoteLetterSpacing: -0.02 } },
-  { id: 'bold', label: 'Bold Dakwah', config: { typography: 'display', quoteFontWeight: 800, quoteLineHeight: 1.2, quoteLetterSpacing: -0.01 } },
-  { id: 'cinematic', label: 'Cinematic', config: { typography: 'serif', quoteFontWeight: 500, quoteLineHeight: 1.6, quoteLetterSpacing: 0.1 } },
-  { id: 'modern', label: 'Modern Islamic', config: { typography: 'sans', quoteFontWeight: 600, quoteLineHeight: 1.5, quoteLetterSpacing: 0 } },
-] as const;
-
-const SHADOW_PRESETS = [
-  { id: 'soft', label: 'Soft Readable', config: { shadowBlur: 10, shadowDistance: 2, shadowOpacity: 0.15, shadowAngle: 45 } },
-  { id: 'glow', label: 'Cinematic Glow', config: { shadowBlur: 25, shadowDistance: 0, shadowOpacity: 0.4, shadowAngle: 0 } },
-  { id: 'strong', label: 'Strong Contrast', config: { shadowBlur: 4, shadowDistance: 4, shadowOpacity: 0.6, shadowAngle: 45 } },
-  { id: 'depth', label: 'Elegant Depth', config: { shadowBlur: 15, shadowDistance: 8, shadowOpacity: 0.2, shadowAngle: 90 } },
-] as const;
 
 export default function Controls({ 
   config, 
@@ -75,60 +68,25 @@ export default function Controls({
   history, 
   saveStatus 
 }: ControlsProps) {
-  const [activeTab, setActiveTab] = useState('content');
+  const [activeTab, setActiveTab] = useState('canvas');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [cropperImage, setCropperImage] = useState<string | null>(null);
 
-  const onDropLogo = (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        updateConfig({ logo: e.target?.result as string });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const onDropBg = (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        updateConfig({ backgroundMode: 'custom', customBg: e.target?.result as string });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const { getRootProps: getLogoProps, getInputProps: getLogoInputProps } = useDropzone({ 
-    onDrop: onDropLogo,
-    accept: { 'image/*': [] },
-    multiple: false
-  });
-
-  const { getRootProps: getBgProps, getInputProps: getBgInputProps } = useDropzone({ 
-    onDrop: onDropBg,
-    accept: { 'image/*': [] },
-    multiple: false
-  });
-
-  const updateConfig = (updates: Partial<FlyerConfig>) => {
-    setConfig(prev => ({ ...prev, ...updates }));
+  const updateConfig = (updates: Partial<FlyerConfig> | ((prev: FlyerConfig) => FlyerConfig), skipHistory?: boolean) => {
+    setConfig(updates, skipHistory);
   };
 
   const handleAiGenerate = async () => {
     setIsGenerating(true);
     try {
-      const data = await generateNasehatAction();
-      if (data.headline && data.quote && data.source) {
+      const result = await generateNasehatAction();
+      if (result) {
         updateConfig({
-          headline: data.headline,
-          quote: data.quote,
-          source: data.source
+          headline: result.headline,
+          quote: result.quote,
+          source: result.source
         });
       }
-    } catch (error) {
-      console.error("AI Error:", error);
     } finally {
       setIsGenerating(false);
     }
@@ -137,510 +95,151 @@ export default function Controls({
   const handleRewrite = async (tone: 'Tegas' | 'Lembut' | 'Motivasi') => {
     setIsGenerating(true);
     try {
-      const text = await rewriteNasehatAction(config.quote, tone);
-      if (text) {
-        updateConfig({ quote: text });
+      const rewritten = await rewriteNasehatAction(config.quote, tone);
+      if (rewritten) {
+        updateConfig({ quote: rewritten });
       }
-    } catch (error) {
-      console.error("AI Error:", error);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const SliderControl = ({ label, value, min, max, step, currentValue, onChange }: any) => (
-    <div className="space-y-2">
-      <div className="flex justify-between">
-        <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500">{label}</label>
-        <span className="text-[9px] font-mono text-neutral-300">{value}</span>
-      </div>
-      <input 
-        type="range" 
-        min={min} max={max} step={step} 
-        value={currentValue}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full h-1 bg-neutral-800 rounded-full appearance-none cursor-pointer accent-[#C5A059]"
-      />
-    </div>
-  );
+  const onDropBackground = (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setCropperImage(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const onDropWatermark = (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        updateConfig({ watermark: { ...config.watermark, logo: e.target?.result as string } });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCropComplete = (cropData: any) => {
+    updateConfig({ 
+      customBg: cropperImage,
+      bgCrop: cropData,
+      backgroundMode: 'custom'
+    });
+    setCropperImage(null);
+  };
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a] text-neutral-200 font-sans selection:bg-[#C5A059]/30">
-      {/* Premium Header with Workflow Controls */}
-      <div className="p-8 pb-4 bg-gradient-to-b from-neutral-900/50 to-transparent backdrop-blur-xl sticky top-0 z-20">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#C5A059] to-[#8B703C] flex items-center justify-center shrink-0 shadow-lg shadow-[#C5A059]/20">
-              <span className="text-white font-black text-2xl drop-shadow-sm">N</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-black tracking-tight text-white leading-none">
-                Nasehat<span className="text-[#C5A059]">Gen</span>
-              </h1>
-              <div className="flex items-center gap-2 mt-1.5">
-                <p className="text-[9px] text-neutral-500 uppercase tracking-[0.3em] font-black opacity-60">Creator Studio Pro</p>
-                <AnimatePresence>
-                  {saveStatus && (
-                    <motion.span 
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="text-[8px] text-[#C5A059] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-[#C5A059]/10"
-                    >
-                      • {saveStatus}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
+    <div className="w-[450px] bg-black border-l border-white/5 flex flex-col h-screen relative z-50 shadow-2xl">
+      {/* Header Studio */}
+      <div className="p-8 pb-4 border-b border-white/5 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-sm font-black tracking-[0.3em] text-white uppercase">NasehatGen <span className="text-[#C5A059]">Pro</span></h1>
+            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mt-1">Creator Studio v2.0</p>
+          </div>
+          <div className="flex items-center gap-2">
+             <div className="flex bg-neutral-900 rounded-xl p-1 border border-white/5">
+                <button 
+                  onClick={history.undo} 
+                  disabled={!history.canUndo}
+                  className="p-2 text-neutral-500 hover:text-white disabled:opacity-30 transition-colors"
+                >
+                  <Undo2 size={16} />
+                </button>
+                <button 
+                  onClick={history.redo} 
+                  disabled={!history.canRedo}
+                  className="p-2 text-neutral-500 hover:text-white disabled:opacity-30 transition-colors rotate-180"
+                >
+                  <Undo2 size={16} />
+                </button>
+             </div>
           </div>
         </div>
 
-        {/* Workflow Action Bar */}
-        <div className="flex items-center justify-between gap-2 p-1 bg-neutral-900/80 rounded-2xl border border-white/5 shadow-inner">
-           <div className="flex gap-1">
-             <button 
-               onClick={history.undo} 
-               disabled={!history.canUndo}
-               className="p-2.5 rounded-xl text-neutral-500 hover:text-white hover:bg-white/5 disabled:opacity-20 transition-all group relative"
-               title="Undo (Ctrl+Z)"
-             >
-               <Undo2 size={16} />
-               <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-neutral-800 text-[8px] font-black text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">Ctrl + Z</span>
-             </button>
-             <button 
-               onClick={history.redo} 
-               disabled={!history.canRedo}
-               className="p-2.5 rounded-xl text-neutral-500 hover:text-white hover:bg-white/5 disabled:opacity-20 transition-all group relative"
-               title="Redo (Ctrl+Y)"
-             >
-               <Undo2 size={16} className="rotate-180" />
-               <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-neutral-800 text-[8px] font-black text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">Ctrl + Y</span>
-             </button>
-           </div>
-           
-           <div className="flex gap-1">
-              <button 
-                onClick={onCopy}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 transition-all group relative"
-              >
-                <Plus size={14} className="rotate-45" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Share</span>
-                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-neutral-800 text-[8px] font-black text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity">Copy to Clipboard</span>
-              </button>
-           </div>
+        {/* Tab Navigation */}
+        <div className="flex gap-1 bg-neutral-900/50 p-1 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                activeTab === tab.id 
+                  ? "bg-[#C5A059] text-white shadow-lg shadow-[#C5A059]/20" 
+                  : "text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
+              )}
+            >
+              <tab.icon size={14} strokeWidth={3} />
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Modern Glass Tabs */}
-      <div className="px-4 py-2 sticky top-[152px] z-20">
-        <div className="flex p-1 bg-neutral-900/80 backdrop-blur-md rounded-2xl border border-white/5 gap-1 overflow-x-auto scrollbar-hide">
-          {TABS.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap flex-1 justify-center",
-                  isActive 
-                    ? "bg-[#C5A059] text-white shadow-lg shadow-[#C5A059]/20" 
-                    : "text-neutral-500 hover:text-neutral-300 hover:bg-white/5"
-                )}
-              >
-                <Icon size={12} strokeWidth={2.5} />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Content Area */}
+      {/* Main Control Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-10 pb-32 scroll-smooth">
+        {activeTab === 'canvas' && <CanvasTab config={config} updateConfig={updateConfig} />}
         {activeTab === 'content' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Content Editor</h3>
-                <button 
-                  onClick={handleAiGenerate}
-                  disabled={isGenerating}
-                  className="flex items-center gap-2 text-[10px] font-black uppercase text-white bg-gradient-to-r from-[#C5A059] to-[#8B703C] px-4 py-2 rounded-xl shadow-lg shadow-[#C5A059]/10 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  <Sparkles size={12} fill="currentColor" />
-                  {isGenerating ? "Crafting..." : "AI Generate"}
-                </button>
-              </div>
-
-              <div className="space-y-5">
-                <div className="space-y-2.5">
-                  <label className="text-[10px] font-black tracking-widest text-neutral-500 uppercase ml-1">Main Headline</label>
-                  <input 
-                    type="text" 
-                    value={config.headline}
-                    onChange={(e) => updateConfig({ headline: e.target.value })}
-                    className="w-full px-5 py-3.5 bg-neutral-900/50 border border-white/5 rounded-2xl text-white focus:border-[#C5A059]/50 focus:ring-4 focus:ring-[#C5A059]/5 outline-none text-sm transition-all placeholder:text-neutral-700"
-                  />
-                </div>
-
-                <div className="space-y-2.5">
-                  <label className="text-[10px] font-black tracking-widest text-neutral-500 uppercase ml-1">The Advice (Quote)</label>
-                  <textarea 
-                    rows={5}
-                    value={config.quote}
-                    onChange={(e) => updateConfig({ quote: e.target.value })}
-                    className="w-full px-5 py-3.5 bg-neutral-900/50 border border-white/5 rounded-2xl text-white focus:border-[#C5A059]/50 focus:ring-4 focus:ring-[#C5A059]/5 outline-none text-sm resize-none transition-all placeholder:text-neutral-700 leading-relaxed"
-                  />
-                  <div className="flex gap-2">
-                    {(['Tegas', 'Lembut', 'Motivasi'] as const).map(tone => (
-                      <button
-                        key={tone}
-                        onClick={() => handleRewrite(tone)}
-                        className="flex-1 text-[9px] font-black uppercase tracking-wider py-2 bg-neutral-900 border border-white/5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all active:scale-95"
-                      >
-                        {tone}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  <label className="text-[10px] font-black tracking-widest text-neutral-500 uppercase ml-1">Reference</label>
-                  <input 
-                    type="text" 
-                    value={config.source}
-                    onChange={(e) => updateConfig({ source: e.target.value })}
-                    className="w-full px-5 py-3.5 bg-neutral-900/50 border border-white/5 rounded-2xl text-white focus:border-[#C5A059]/50 focus:ring-4 focus:ring-[#C5A059]/5 outline-none text-sm transition-all"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-8 space-y-6 border-t border-white/5">
-              <label className="text-[10px] font-black tracking-widest text-neutral-500 uppercase ml-1">Branding Identity</label>
-              <div 
-                {...getLogoProps()} 
-                className="w-full p-5 border-2 border-dashed border-neutral-800 rounded-2xl bg-neutral-900/30 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[#C5A059]/30 hover:bg-[#C5A059]/5 transition-all group"
-              >
-                <input {...getLogoInputProps()} />
-                {config.logo ? (
-                  <div className="flex items-center gap-4 w-full">
-                    <div className="relative w-12 h-12 shrink-0 rounded-lg overflow-hidden bg-white/5 p-2">
-                      <Image src={config.logo} alt="Logo Preview" fill className="object-contain" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[10px] font-black uppercase text-white tracking-widest">Brand Logo Active</p>
-                      <p className="text-[8px] text-neutral-600 font-bold uppercase mt-0.5">Click to change</p>
-                    </div>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); updateConfig({ logo: null }); }}
-                      className="p-2 text-neutral-700 hover:text-red-500 bg-black/20 rounded-xl transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                       <Plus size={20} className="text-neutral-500" />
-                    </div>
-                    <span className="text-[10px] text-neutral-500 font-black uppercase tracking-[0.2em]">Upload Studio Logo</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+          <QuickEditTab 
+            config={config} 
+            updateConfig={updateConfig} 
+            onAiGenerate={handleAiGenerate}
+            onRewrite={handleRewrite}
+            isGenerating={isGenerating}
+          />
         )}
-
-        {activeTab === 'style' && (
-          <div className="space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            {/* Advanced Typography Section */}
-            <div className="space-y-6">
-              <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Professional Typography</h3>
-              
-              <div className="grid grid-cols-5 gap-2">
-                {TYPOGRAPHY_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => updateConfig(preset.config)}
-                    className="flex flex-col items-center gap-2 p-2 rounded-xl bg-neutral-900/50 border border-white/5 hover:border-[#C5A059]/50 transition-all group"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-neutral-800 flex items-center justify-center text-[10px] font-black text-neutral-500 group-hover:text-white transition-colors">Aa</div>
-                    <span className="text-[7px] font-black uppercase tracking-tighter text-neutral-600 group-hover:text-neutral-400">{preset.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-6 bg-neutral-900/30 p-5 rounded-2xl border border-white/5">
-                <div className="space-y-4">
-                  <SliderControl label="Font Size" value={config.quoteFontSize === 0 ? 'Auto' : `${config.quoteFontSize}px`} min={0} max={120} step={2} currentValue={config.quoteFontSize} onChange={(v: number) => updateConfig({ quoteFontSize: v })} />
-                  <SliderControl label="Line Height" value={config.quoteLineHeight} min={1} max={2.5} step={0.1} currentValue={config.quoteLineHeight} onChange={(v: number) => updateConfig({ quoteLineHeight: v })} />
-                  <SliderControl label="Letter Spacing" value={config.quoteLetterSpacing} min={-0.1} max={0.3} step={0.01} currentValue={config.quoteLetterSpacing} onChange={(v: number) => updateConfig({ quoteLetterSpacing: v })} />
-                  <SliderControl label="Text Width" value={`${config.quoteWidth}%`} min={50} max={100} step={1} currentValue={config.quoteWidth} onChange={(v: number) => updateConfig({ quoteWidth: v })} />
-                  <SliderControl label="Font Weight" value={config.quoteFontWeight} min={300} max={900} step={100} currentValue={config.quoteFontWeight} onChange={(v: number) => updateConfig({ quoteFontWeight: v })} />
-                  <SliderControl label="Opacity" value={`${Math.round(config.quoteOpacity * 100)}%`} min={0} max={1} step={0.05} currentValue={config.quoteOpacity} onChange={(v: number) => updateConfig({ quoteOpacity: v })} />
-                </div>
-              </div>
-            </div>
-
-            {/* Smart Shadow Section */}
-            <div className="space-y-6">
-              <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Shadow Engine</h3>
-              
-              <div className="grid grid-cols-4 gap-2">
-                {SHADOW_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => updateConfig(preset.config)}
-                    className="py-3 rounded-xl bg-neutral-900/50 border border-white/5 text-[8px] font-black uppercase tracking-widest text-neutral-500 hover:text-white hover:border-[#C5A059]/30 transition-all"
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4 bg-neutral-900/30 p-5 rounded-2xl border border-white/5">
-                <SliderControl label="Blur" value={config.shadowBlur} min={0} max={50} step={1} currentValue={config.shadowBlur} onChange={(v: number) => updateConfig({ shadowBlur: v })} />
-                <SliderControl label="Distance" value={config.shadowDistance} min={0} max={20} step={1} currentValue={config.shadowDistance} onChange={(v: number) => updateConfig({ shadowDistance: v })} />
-                <SliderControl label="Opacity" value={config.shadowOpacity} min={0} max={1} step={0.05} currentValue={config.shadowOpacity} onChange={(v: number) => updateConfig({ shadowOpacity: v })} />
-                <SliderControl label="Angle" value={`${config.shadowAngle}°`} min={0} max={360} step={1} currentValue={config.shadowAngle} onChange={(v: number) => updateConfig({ shadowAngle: v })} />
-              </div>
-            </div>
-
-            {/* Frame Variations Section */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Layout Transformations</h3>
-              </div>
-              
-              <div className="space-y-6 bg-neutral-900/30 p-5 rounded-2xl border border-white/5">
-                <div className="space-y-4">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-neutral-600 mb-2">Quote Element</p>
-                  <SliderControl label="Quote Scale" value={config.elementPositions.quote.scale} min={0.5} max={2} step={0.1} currentValue={config.elementPositions.quote.scale} onChange={(v: number) => setConfig(prev => ({ ...prev, elementPositions: { ...prev.elementPositions, quote: { ...prev.elementPositions.quote, scale: v } } }))} />
-                  <SliderControl label="Quote Rotate" value={`${config.elementPositions.quote.rotate}°`} min={-180} max={180} step={1} currentValue={config.elementPositions.quote.rotate} onChange={(v: number) => setConfig(prev => ({ ...prev, elementPositions: { ...prev.elementPositions, quote: { ...prev.elementPositions.quote, rotate: v } } }))} />
-                  
-                  <div className="pt-4 border-t border-white/5">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-neutral-600 mb-2">Logo Element</p>
-                    <SliderControl label="Logo Scale" value={config.elementPositions.logo.scale} min={0.5} max={2} step={0.1} currentValue={config.elementPositions.logo.scale} onChange={(v: number) => setConfig(prev => ({ ...prev, elementPositions: { ...prev.elementPositions, logo: { ...prev.elementPositions.logo, scale: v } } }))} />
-                    <SliderControl label="Logo Rotate" value={`${config.elementPositions.logo.rotate}°`} min={-180} max={180} step={1} currentValue={config.elementPositions.logo.rotate} onChange={(v: number) => setConfig(prev => ({ ...prev, elementPositions: { ...prev.elementPositions, logo: { ...prev.elementPositions.logo, rotate: v } } }))} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Frame Variations Section */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Style Frame</h3>
-                <button 
-                  onClick={() => updateConfig({ showFrame: !config.showFrame })}
-                  className={cn(
-                    "w-10 h-5 rounded-full transition-all relative",
-                    config.showFrame ? "bg-[#C5A059]" : "bg-neutral-800"
-                  )}
-                >
-                  <div className={cn("absolute top-1 w-3 h-3 rounded-full bg-white transition-all", config.showFrame ? "left-6" : "left-1")} />
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-5 gap-2">
-                {([
-                  { id: 'standard', label: 'STD' },
-                  { id: 'double', label: 'DBL' },
-                  { id: 'minimal', label: 'MIN' },
-                  { id: 'ribbon', label: 'RBN' },
-                  { id: 'glow', label: 'GLW' }
-                ] as const).map(style => (
-                  <button
-                    key={style.id}
-                    onClick={() => updateConfig({ frameStyle: style.id })}
-                    className={cn(
-                      "aspect-square rounded-xl border flex items-center justify-center text-[9px] font-black transition-all",
-                      config.frameStyle === style.id 
-                        ? "bg-[#C5A059] text-white border-transparent shadow-lg shadow-[#C5A059]/20" 
-                        : "bg-neutral-900 border-white/5 text-neutral-600 hover:text-neutral-400 hover:border-white/10"
-                    )}
-                  >
-                    {style.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-4 items-center bg-neutral-900/30 p-5 rounded-2xl border border-white/5">
-                 <div className="flex-1 space-y-4">
-                    <SliderControl label="Frame Size" value={config.frameSize} min={0.5} max={2} step={0.1} currentValue={config.frameSize} onChange={(v: number) => updateConfig({ frameSize: v })} />
-                    <SliderControl label="Opacity" value={config.frameOpacity} min={0} max={1} step={0.1} currentValue={config.frameOpacity} onChange={(v: number) => updateConfig({ frameOpacity: v })} />
-                 </div>
-                 <div className="w-[1px] h-12 bg-white/5" />
-                 <button 
-                   onClick={() => updateConfig({ frameColor: config.frameColor === '#C5A059' ? '#FFFFFF' : '#C5A059' })}
-                   className="w-10 h-10 rounded-xl border border-white/10 flex items-center justify-center transition-all hover:scale-110 active:scale-90"
-                   style={{ backgroundColor: config.frameColor }}
-                 />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'fx' && (
-          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className="space-y-6">
-              <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Texture System</h3>
-              
-              <div className="grid grid-cols-4 gap-2">
-                {([
-                  { id: 'paper', label: 'Paper' },
-                  { id: 'grain', label: 'Film Grain' },
-                  { id: 'dust', label: 'Subtle Dust' },
-                  { id: 'noise', label: 'Soft Noise' },
-                  { id: 'fiber', label: 'Vintage' },
-                  { id: 'matte', label: 'Matte' },
-                  { id: 'canvas', label: 'Canvas' },
-                  { id: 'none', label: 'Off' }
-                ] as const).map(tex => (
-                  <button
-                    key={tex.id}
-                    onClick={() => updateConfig({ textureType: tex.id, showTexture: tex.id !== 'none' })}
-                    className={cn(
-                      "px-2 py-3 rounded-xl border text-[8px] font-black uppercase tracking-widest transition-all",
-                      config.textureType === tex.id 
-                        ? "bg-[#C5A059] text-white border-transparent" 
-                        : "bg-neutral-900 text-neutral-500 border-white/5 hover:border-white/20"
-                    )}
-                  >
-                    {tex.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-6 bg-neutral-900/30 p-6 rounded-2xl border border-white/5">
-                <SliderControl label="Texture Opacity" value={config.textureOpacity} min={0} max={0.2} step={0.01} currentValue={config.textureOpacity} onChange={(v: number) => updateConfig({ textureOpacity: v })} />
-                <SliderControl label="Intensity" value={config.textureIntensity} min={0} max={2} step={0.1} currentValue={config.textureIntensity} onChange={(v: number) => updateConfig({ textureIntensity: v })} />
-                <SliderControl label="Scale" value={config.textureScale} min={0.5} max={2} step={0.1} currentValue={config.textureScale} onChange={(v: number) => updateConfig({ textureScale: v })} />
-                
-                <div className="space-y-3">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500 ml-1">Blend Mode</label>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {(['multiply', 'screen', 'overlay', 'soft-light'] as const).map(mode => (
-                      <button
-                        key={mode}
-                        onClick={() => updateConfig({ textureBlendMode: mode })}
-                        className={cn(
-                          "py-2 text-[7px] font-black uppercase border rounded-lg transition-all",
-                          config.textureBlendMode === mode ? "bg-white text-black border-transparent" : "border-white/5 text-neutral-500 hover:text-white"
-                        )}
-                      >
-                        {mode.replace('-', ' ')}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-8 space-y-6 border-t border-white/5">
-              <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Atmospheric Filters</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {([
-                  { id: 'none', label: 'Raw Lens' },
-                  { id: 'grayscale', label: 'Noir' },
-                  { id: 'sepia', label: 'Classic' },
-                  { id: 'darken', label: 'Moody' }
-                ] as const).map(filter => (
-                  <button
-                    key={filter.id}
-                    onClick={() => updateConfig({ bgFilter: filter.id })}
-                    className={cn(
-                      "px-4 py-3 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all",
-                      config.bgFilter === filter.id 
-                        ? "bg-neutral-800 text-white border-[#C5A059]/50" 
-                        : "bg-neutral-900 text-neutral-500 border-white/5 hover:border-white/20"
-                    )}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'background' && (
-          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className="space-y-6">
-              <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Studio Backdrops</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {BACKGROUND_PRESETS.map(bg => (
-                  <button
-                    key={bg.id}
-                    onClick={() => updateConfig({ backgroundMode: 'preset', bgPresetId: bg.id })}
-                    className={cn(
-                      "relative aspect-[4/5] rounded-2xl overflow-hidden border-2 transition-all group",
-                      config.bgPresetId === bg.id && config.backgroundMode === 'preset'
-                        ? "border-[#C5A059] shadow-xl shadow-[#C5A059]/20" 
-                        : "border-transparent opacity-60 hover:opacity-100 hover:scale-[1.02]"
-                    )}
-                  >
-                    <Image src={bg.url} alt={bg.name} fill className="object-cover" referrerPolicy="no-referrer" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3 z-10">
-                      <span className="text-[8px] text-white font-black uppercase tracking-widest">{bg.name}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-8 space-y-6 border-t border-white/5">
-              <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Custom Backdrop</h3>
-              <div 
-                {...getBgProps()} 
-                className={cn(
-                  "w-full aspect-video border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-all",
-                  config.backgroundMode === 'custom' ? "border-[#C5A059] bg-[#C5A059]/5" : "border-neutral-800 bg-neutral-900/50 hover:border-neutral-700"
-                )}
-              >
-                <input {...getBgInputProps()} />
-                {config.customBg ? (
-                  <div className="relative w-full h-full group overflow-hidden rounded-xl">
-                    <Image src={config.customBg} alt="Custom Background" fill className="object-cover" unoptimized />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-sm">
-                      <p className="text-[10px] text-white font-black uppercase tracking-[0.3em]">Update Stage</p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <ImageIcon size={24} className="text-neutral-700" />
-                    <p className="text-[10px] text-neutral-600 font-black uppercase tracking-widest">Import Custom Stage</p>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
+        {activeTab === 'style' && <DesignTab config={config} updateConfig={updateConfig} />}
+        {activeTab === 'background' && <BackdropTab config={config} updateConfig={updateConfig} onDropBackground={onDropBackground} />}
+        {activeTab === 'fx' && <VisualFXTab config={config} updateConfig={updateConfig} />}
+        {activeTab === 'branding' && <BrandingTab config={config} updateConfig={updateConfig} onDropWatermark={onDropWatermark} />}
+        {activeTab === 'export' && <ExportTab config={config} updateConfig={updateConfig} />}
+        
         {activeTab === 'presets' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <h3 className="text-[10px] uppercase tracking-[0.25em] text-[#C5A059] font-black">Visual Templates</h3>
-            <div className="grid grid-cols-1 gap-4">
-              {PRESETS.map(preset => (
-                <button
-                  key={preset.id}
-                  onClick={() => updateConfig(preset.config)}
-                  className="flex items-center gap-5 p-5 rounded-2xl bg-neutral-900/50 border border-white/5 hover:border-[#C5A059]/50 hover:bg-neutral-800/50 transition-all text-left group shadow-sm hover:shadow-xl"
-                >
-                  <div className={cn("w-12 h-12 rounded-xl shrink-0 shadow-inner ring-1 ring-white/10 transition-transform group-hover:scale-110", preset.previewColor)} />
-                  <div className="flex-1">
-                    <h4 className="text-[11px] font-black uppercase tracking-[0.15em] text-white group-hover:text-[#C5A059] transition-colors">{preset.name}</h4>
-                    <p className="text-[8px] text-neutral-600 font-black uppercase tracking-widest mt-1.5 opacity-60">
-                      {preset.config.typography} Layout • {preset.config.textAlign}
-                    </p>
-                  </div>
-                  <ChevronRight size={16} className="text-neutral-700 group-hover:text-[#C5A059] group-hover:translate-x-1 transition-all" />
-                </button>
-              ))}
-            </div>
+          <div className="grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => updateConfig(preset.config)}
+                className="group relative h-32 rounded-[24px] overflow-hidden border border-white/5 transition-all hover:border-[#C5A059]/50 text-left"
+              >
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10" />
+                <div className={cn("absolute inset-0 bg-neutral-900 group-hover:scale-110 transition-transform duration-700", preset.previewColor)} />
+                <div className="absolute bottom-6 left-6 z-20 text-left">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#C5A059] mb-1">{preset.category || 'Standard'}</p>
+                  <h4 className="text-sm font-black text-white uppercase tracking-wider">{preset.name}</h4>
+                </div>
+              </button>
+            ))}
           </div>
         )}
+      </div>
+
+      {/* Status Bar */}
+      <div className="absolute bottom-24 left-0 right-0 px-8 pointer-events-none">
+        <AnimatePresence>
+          {saveStatus && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="bg-neutral-900/80 backdrop-blur-md border border-white/5 py-2 px-4 rounded-full flex items-center gap-3 w-fit shadow-xl"
+            >
+              <div className={cn(
+                "w-1.5 h-1.5 rounded-full animate-pulse",
+                saveStatus === 'Saving...' ? "bg-yellow-500" : "bg-green-500"
+              )} />
+              <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400">{saveStatus}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Floating Export Dock */}
@@ -653,42 +252,27 @@ export default function Controls({
           {isExporting ? (
             <>
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span className="text-[10px] uppercase tracking-[0.25em] font-black">Rendering Studio Quality...</span>
+              <span className="text-[10px] uppercase tracking-[0.25em] font-black">Rendering {config.exportSettings.format.toUpperCase()}...</span>
             </>
           ) : (
             <>
               <Download size={20} strokeWidth={3} className="group-hover:translate-y-0.5 transition-transform" />
-              <span className="text-[10px] uppercase tracking-[0.3em] font-black">Export Studio Flyer</span>
+              <span className="text-[10px] uppercase tracking-[0.3em] font-black">Export as {config.exportSettings.format.toUpperCase()}</span>
             </>
           )}
         </button>
       </div>
-    </div>
-  );
-}
 
-// Helper Slider Component for Clean Code
-function SliderControl({ label, value, min, max, step, currentValue, onChange }: { 
-  label: string; 
-  value: string | number; 
-  min: number; 
-  max: number; 
-  step: number; 
-  currentValue: number; 
-  onChange: (v: number) => void; 
-}) {
-  return (
-    <div className="space-y-2.5">
-      <div className="flex justify-between items-center px-1">
-        <label className="text-[9px] font-black uppercase tracking-widest text-neutral-500">{label}</label>
-        <span className="text-[9px] font-black text-neutral-400 bg-white/5 px-2 py-0.5 rounded-lg">{value}</span>
-      </div>
-      <input 
-        type="range" min={min} max={max} step={step}
-        value={currentValue}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full h-1.5 bg-neutral-800 rounded-full appearance-none cursor-pointer accent-[#C5A059] hover:accent-[#e0bb6c] transition-all"
-      />
+      <AnimatePresence>
+        {cropperImage && (
+          <ImageCropper 
+            image={cropperImage} 
+            aspectRatio={(ASPECT_RATIO_PRESETS.find(p => p.id === config.aspectRatio) || ASPECT_RATIO_PRESETS[1]).width / (ASPECT_RATIO_PRESETS.find(p => p.id === config.aspectRatio) || ASPECT_RATIO_PRESETS[1]).height}
+            onCrop={handleCropComplete}
+            onClose={() => setCropperImage(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

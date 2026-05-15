@@ -4,11 +4,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import Controls from '@/components/Controls';
 import FlyerPreview from '@/components/FlyerPreview';
 import { FlyerConfig, BACKGROUND_PRESETS } from '@/lib/constants';
-import { toPng, toBlob } from 'html-to-image';
+import { toPng, toBlob, toJpeg } from 'html-to-image';
 import { motion, AnimatePresence } from 'motion/react';
 import { useHistory } from '@/hooks/useHistory';
+import { jsPDF } from 'jspdf';
+import { ASPECT_RATIO_PRESETS } from '@/lib/constants';
 
 const INITIAL_CONFIG: FlyerConfig = {
+// ... same initial config as before ...
   headline: 'ADAB BERTEMAN',
   quote: '"Seseorang itu bergantung pada agama temannya. Maka hendaknya salah seorang dari kalian melihat siapa yang ia jadikan teman."',
   source: 'Hadits Riwayat Tirmidzi & Abu Dawud',
@@ -19,6 +22,10 @@ const INITIAL_CONFIG: FlyerConfig = {
   typography: 'serif',
   textAlign: 'center',
   
+  aspectRatio: '4:5',
+  showSafeArea: false,
+  previewMode: 'none',
+
   backgroundMode: 'preset',
   bgPresetId: 'mosque-1',
   customBg: null,
@@ -60,6 +67,21 @@ const INITIAL_CONFIG: FlyerConfig = {
   shadowAngle: 45,
   shadowColor: '#000000',
 
+  watermark: {
+    enabled: false,
+    logo: null,
+    opacity: 0.3,
+    position: 'bottom-right',
+    scale: 1,
+  },
+
+  exportSettings: {
+    format: 'png',
+    quality: 0.9,
+    scale: 2,
+    dpi: 72,
+  },
+
   elementPositions: {
     quote: { x: 0, y: 0, scale: 1, rotate: 0 },
     logo: { x: 0, y: 0, scale: 1, rotate: 0 },
@@ -78,7 +100,10 @@ export default function Page() {
     const saved = localStorage.getItem('nasehatgen_draft');
     if (saved) {
       try {
-        setConfig(JSON.parse(saved), true);
+        const parsed = JSON.parse(saved);
+        // Ensure new fields exist in restored draft
+        const merged = { ...INITIAL_CONFIG, ...parsed };
+        setConfig(merged, true);
         setSaveStatus('Restored Draft');
         setTimeout(() => setSaveStatus(null), 3000);
       } catch (e) {
@@ -102,25 +127,47 @@ export default function Page() {
     if (!flyerRef.current) return;
     
     setIsExporting(true);
+    const { format, quality, scale } = config.exportSettings;
+    const preset = ASPECT_RATIO_PRESETS.find(p => p.id === config.aspectRatio) || ASPECT_RATIO_PRESETS[1];
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const dataUrl = await toPng(flyerRef.current, {
+      await new Promise(resolve => setTimeout(resolve, 800)); // Visual feedback delay
+
+      const exportOptions = {
         cacheBust: true,
-        width: 1080,
-        height: 1350,
+        width: preset.width * (format === 'pdf' ? 1 : scale),
+        height: preset.height * (format === 'pdf' ? 1 : scale),
+        quality: quality,
         style: {
-          transform: 'scale(1)',
-          width: '1080px',
-          height: '1350px',
-          maxWidth: 'none',
-          maxHeight: 'none',
+          transform: `scale(${format === 'pdf' ? 1 : scale})`,
+          transformOrigin: 'top left',
+          width: `${preset.width}px`,
+          height: `${preset.height}px`,
         }
-      });
-      
-      const link = document.createElement('a');
-      link.download = `nasehat-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
+      };
+
+      if (format === 'pdf') {
+        const dataUrl = await toPng(flyerRef.current, exportOptions);
+        const pdf = new jsPDF({
+          orientation: preset.width > preset.height ? 'landscape' : 'portrait',
+          unit: 'px',
+          format: [preset.width, preset.height]
+        });
+        pdf.addImage(dataUrl, 'PNG', 0, 0, preset.width, preset.height);
+        pdf.save(`nasehat-${Date.now()}.pdf`);
+      } else if (format === 'jpg') {
+        const dataUrl = await toJpeg(flyerRef.current, exportOptions);
+        const link = document.createElement('a');
+        link.download = `nasehat-${Date.now()}.jpg`;
+        link.href = dataUrl;
+        link.click();
+      } else {
+        const dataUrl = await toPng(flyerRef.current, exportOptions);
+        const link = document.createElement('a');
+        link.download = `nasehat-${Date.now()}.png`;
+        link.href = dataUrl;
+        link.click();
+      }
     } catch (error) {
       console.error('Export failed:', error);
     } finally {

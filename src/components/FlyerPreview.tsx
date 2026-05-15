@@ -2,8 +2,8 @@
 
 import React, { useRef, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Facebook, Camera, Send, Twitter } from 'lucide-react';
-import { FlyerConfig, FONTS, BACKGROUND_PRESETS } from '@/lib/constants';
+import { Facebook, Camera, Send, Twitter, ChevronRight } from 'lucide-react';
+import { FlyerConfig, FONTS, BACKGROUND_PRESETS, ASPECT_RATIO_PRESETS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -16,6 +16,15 @@ interface FlyerPreviewProps {
 export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeGuides, setActiveGuides] = useState<{ x: boolean; y: boolean }>({ x: false, y: false });
+
+  // Aspect Ratio Logic
+  const canvasDimensions = useMemo(() => {
+    if (config.aspectRatio === 'custom' && config.customDimensions) {
+      return { width: config.customDimensions.width, height: config.customDimensions.height };
+    }
+    const preset = ASPECT_RATIO_PRESETS.find((p: any) => p.id === config.aspectRatio) || ASPECT_RATIO_PRESETS[1];
+    return { width: preset.width, height: preset.height };
+  }, [config.aspectRatio, config.customDimensions]);
 
   const bgImage = useMemo(() => {
     if (config.backgroundMode === 'custom' && config.customBg) {
@@ -66,9 +75,178 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
     setActiveGuides({ x: false, y: false });
   };
 
-  return (
-    <div className="flex justify-center items-center h-full p-4 md:p-12">
+  const WatermarkLayer = () => {
+    if (!config.watermark.enabled) return null;
+    
+    const positions = {
+      'top-left': 'top-8 left-8',
+      'top-right': 'top-8 right-8',
+      'bottom-left': 'bottom-8 left-8',
+      'bottom-right': 'bottom-8 right-8',
+      'center': 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
+    };
+
+    return (
       <div 
+        className={cn("absolute z-[100] pointer-events-none transition-all duration-500", positions[config.watermark.position])}
+        style={{ opacity: config.watermark.opacity, transform: `scale(${config.watermark.scale})` }}
+      >
+        {config.watermark.logo ? (
+          <img src={config.watermark.logo} alt="Watermark" className="w-24 h-auto object-contain grayscale" />
+        ) : (
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-black/40">NASEHATGEN</span>
+            <span className="text-[8px] font-bold text-black/20 mt-1 uppercase tracking-widest">Creator Studio Pro</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const SafeAreaOverlay = () => {
+    if (!config.showSafeArea) return null;
+    
+    return (
+      <div className="absolute inset-0 z-[90] pointer-events-none">
+        {/* TikTok / Reels Safe Areas */}
+        {config.aspectRatio === '9:16' && (
+          <>
+            <div className="absolute top-0 left-0 right-0 h-32 bg-red-500/10 border-b border-red-500/20 flex items-center justify-center">
+              <span className="text-[10px] font-bold text-red-500/50 uppercase tracking-widest">Story Top Safe Area</span>
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 h-48 bg-red-500/10 border-t border-red-500/20 flex items-center justify-center">
+              <span className="text-[10px] font-bold text-red-500/50 uppercase tracking-widest">UI Controls Safe Area</span>
+            </div>
+            <div className="absolute top-0 bottom-0 right-0 w-20 bg-red-500/5 border-l border-red-500/10" />
+          </>
+        )}
+        {/* Instagram Post Safe Areas */}
+        {config.aspectRatio === '4:5' && (
+          <div className="absolute inset-4 border border-blue-500/20 rounded-xl bg-blue-500/5 flex items-start justify-center pt-2">
+            <span className="text-[8px] font-bold text-blue-500/40 uppercase tracking-widest">Safe Area Layout</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const SocialMediaPreview = () => {
+    if (config.previewMode === 'none') return null;
+
+    return (
+      <div className="absolute inset-0 z-[110] pointer-events-none overflow-hidden">
+        {config.previewMode === 'instagram' && (
+          <div className="flex flex-col h-full bg-black/20 backdrop-blur-[2px]">
+            {/* IG Header */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-b from-black/60 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 p-[1.5px]">
+                  <div className="w-full h-full rounded-full bg-black border-2 border-transparent" />
+                </div>
+                <span className="text-white text-xs font-bold tracking-tight">your_dakwah_account</span>
+              </div>
+              <div className="flex gap-4 text-white">
+                <div className="w-1 h-1 rounded-full bg-white" />
+                <div className="w-1 h-1 rounded-full bg-white" />
+                <div className="w-1 h-1 rounded-full bg-white" />
+              </div>
+            </div>
+            
+            {/* IG Footer Interaction */}
+            <div className="mt-auto p-4 bg-gradient-to-t from-black/80 to-transparent space-y-3">
+              <div className="flex items-center justify-between text-white">
+                <div className="flex gap-4">
+                   <div className="w-6 h-6 border-2 border-white rounded-md flex items-center justify-center"><div className="w-3 h-2 bg-white rounded-sm" /></div>
+                   <div className="w-6 h-6 border-2 border-white rounded-full" />
+                   <Send size={22} className="-rotate-12" />
+                </div>
+                <div className="w-6 h-6 border-2 border-white rounded-sm" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-white text-[11px] font-bold">1,234 likes</p>
+                <p className="text-white text-[10px]"><span className="font-bold">your_dakwah_account</span> Mari berbagi kebaikan...</p>
+                <p className="text-white/40 text-[9px] uppercase font-bold tracking-wider pt-1">2 HOURS AGO</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {config.previewMode === 'tiktok' && (
+          <div className="flex flex-col h-full">
+            {/* TikTok Sidebar */}
+            <div className="absolute right-3 bottom-32 flex flex-col items-center gap-6">
+              <div className="relative">
+                <div className="w-11 h-11 rounded-full bg-neutral-800 border-2 border-white overflow-hidden shadow-xl" />
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-[#FE2C55] flex items-center justify-center text-white text-[10px] font-bold">+</div>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-8 h-8 flex items-center justify-center text-white"><span className="text-3xl">❤️</span></div>
+                <span className="text-white text-[10px] font-bold shadow-sm">15.2K</span>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-8 h-8 flex items-center justify-center text-white"><span className="text-2xl">💬</span></div>
+                <span className="text-white text-[10px] font-bold shadow-sm">458</span>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-8 h-8 flex items-center justify-center text-white"><span className="text-2xl">🔖</span></div>
+                <span className="text-white text-[10px] font-bold shadow-sm">2.4K</span>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-8 h-8 flex items-center justify-center text-white"><span className="text-2xl">🔄</span></div>
+                <span className="text-white text-[10px] font-bold shadow-sm">842</span>
+              </div>
+            </div>
+            
+            {/* TikTok Description Area */}
+            <div className="mt-auto p-4 bg-gradient-to-t from-black/60 to-transparent space-y-2 pb-12">
+               <p className="text-white text-xs font-bold">@nasehat.daily</p>
+               <p className="text-white text-[11px] leading-relaxed max-w-[80%]">Self reminder untuk kita semua hari ini. Semoga bermanfaat! ✨ #dakwah #islamicquotes #hijrah</p>
+               <div className="flex items-center gap-2">
+                 <span className="text-white text-[10px]">♫</span>
+                 <p className="text-white text-[10px] tracking-tight">Original Sound - Nasehat Daily</p>
+               </div>
+            </div>
+          </div>
+        )}
+
+        {config.previewMode === 'whatsapp' && (
+          <div className="flex flex-col h-full bg-black/10">
+             {/* WhatsApp Top Status Bar */}
+             <div className="flex gap-1 px-2 pt-2">
+               <div className="flex-1 h-[2.5px] bg-white/40 rounded-full overflow-hidden">
+                 <div className="w-[70%] h-full bg-white" />
+               </div>
+               <div className="flex-1 h-[2.5px] bg-white/40 rounded-full" />
+             </div>
+             
+             <div className="flex items-center justify-between p-4 pt-2">
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 rounded-full bg-neutral-800 border border-white/20" />
+                 <div className="flex flex-col">
+                   <span className="text-white text-sm font-bold tracking-tight">Status Saya</span>
+                   <span className="text-white/60 text-[10px] uppercase font-bold tracking-widest">34 menit yang lalu</span>
+                 </div>
+               </div>
+               <div className="flex gap-4 text-white/80">
+                 <div className="w-1 h-1 rounded-full bg-white" />
+                 <div className="w-1 h-1 rounded-full bg-white" />
+                 <div className="w-1 h-1 rounded-full bg-white" />
+               </div>
+             </div>
+
+             <div className="mt-auto p-8 flex flex-col items-center gap-2 bg-gradient-to-t from-black/40 to-transparent">
+               <div className="text-white opacity-60"><ChevronRight size={24} className="-rotate-90" /></div>
+               <span className="text-white/80 text-[10px] font-black uppercase tracking-[0.3em]">Balas</span>
+             </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex justify-center items-center h-full p-4 md:p-12 perspective-1000">
+      <motion.div 
         id="flyer-container"
         ref={(el) => {
           // @ts-ignore
@@ -76,12 +254,24 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
           // @ts-ignore
           containerRef.current = el;
         }}
+        initial={false}
+        animate={{
+          width: canvasDimensions.width / 2,
+          height: canvasDimensions.height / 2,
+        }}
+        transition={{ type: 'spring', damping: 25, stiffness: 120 }}
         className={cn(
-          "relative overflow-hidden bg-white select-none",
-          "w-full max-w-[400px] aspect-[4/5] sm:max-w-none sm:h-[750px] sm:w-[600px]",
-          "shadow-[0_20px_50px_rgba(0,0,0,0.1)]"
+          "relative overflow-hidden bg-white select-none origin-center",
+          "shadow-[0_40px_100px_rgba(0,0,0,0.25)] ring-1 ring-white/10"
         )}
+        style={{
+           maxHeight: '85vh',
+           maxWidth: '85vw',
+        }}
       >
+        <SafeAreaOverlay />
+        <WatermarkLayer />
+        <SocialMediaPreview />
         {/* Alignment Guides */}
         <AnimatePresence>
           {activeGuides.x && (
@@ -337,7 +527,7 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
           </div>
         )}
 
-      </div>
+      </motion.div>
     </div>
   );
 }
