@@ -57,7 +57,7 @@ export const PRESETS: PresetTemplate[] = [
       textAlign: 'center',
       overlayOpacity: 0.6,
       gradientOverlay: true,
-      accentColor: '#D4AF37', // Gold
+      accentColor: '#C5A059', // Gold
       showContentBox: false,
     }
   },
@@ -96,7 +96,7 @@ export const PRESETS: PresetTemplate[] = [
       textAlign: 'center',
       overlayOpacity: 0.8,
       gradientOverlay: false,
-      accentColor: '#FFD700',
+      accentColor: '#C5A059',
       showContentBox: false,
     }
   },

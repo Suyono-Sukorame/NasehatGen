@@ -2,6 +2,7 @@
 
 import React, { useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Facebook, Camera, Send, Twitter } from 'lucide-react';
 import { FlyerConfig, FONTS, BACKGROUND_PRESETS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -69,9 +70,9 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
           containerRef.current = el;
         }}
         className={cn(
-          "relative overflow-hidden bg-[#1a1a1a] select-none",
+          "relative overflow-hidden bg-white select-none",
           "w-full max-w-[400px] aspect-[4/5] sm:max-w-none sm:h-[750px] sm:w-[600px]",
-          "shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7)]"
+          "shadow-[0_20px_50px_rgba(0,0,0,0.1)]"
         )}
       >
         {/* Layer 1: Background Image */}
@@ -80,7 +81,7 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
             src={bgImage}
             alt="Flyer Background"
             fill
-            className="object-cover transition-all duration-700"
+            className="object-cover transition-all duration-700 opacity-10"
             style={{ 
               filter: bgFilterStyle,
               transform: config.blurEffect ? 'scale(1.1)' : 'scale(1)'
@@ -93,54 +94,51 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
         {/* Layer 2: Texture Layer */}
         {config.showTexture && (
           <div 
-            className="absolute inset-0 opacity-20 z-10 pointer-events-none mix-blend-overlay"
-            style={{ backgroundImage: 'radial-gradient(#d4af37 0.5px, transparent 0.5px)', backgroundSize: '16px 16px' }}
+            className="absolute inset-0 opacity-5 z-10 pointer-events-none mix-blend-multiply"
+            style={{ backgroundImage: 'radial-gradient(#C5A059 0.5px, transparent 0.5px)', backgroundSize: '16px 16px' }}
           />
         )}
 
-        {/* Layer 3: Overlays */}
-        <div 
-          className="absolute inset-0 transition-opacity duration-700 z-20"
-          style={{ 
-            backgroundColor: `rgba(0, 0, 0, ${config.overlayOpacity})` 
-          }}
-        />
-
-        {config.gradientOverlay && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-25 opacity-90" />
+        {/* Layer 3: Overlays - Hidden or Adjusted for White Template */}
+        {config.backgroundMode === 'custom' && (
+          <div 
+            className="absolute inset-0 transition-opacity duration-700 z-20"
+            style={{ 
+              backgroundColor: `rgba(255, 255, 255, ${1 - config.overlayOpacity})` 
+            }}
+          />
         )}
 
-        {/* Layer 4: Decorative Borders */}
-        <div className="absolute inset-0 border-[12px] border-black/10 z-30 pointer-events-none" />
-        <div className="absolute top-8 left-8 w-12 h-12 border-t border-l border-[#d4af37]/30 z-30" />
-        <div className="absolute bottom-8 right-8 w-12 h-12 border-b border-r border-[#d4af37]/30 z-30" />
+        {/* Content Box - Removed or Made Subtle */}
+        {config.showContentBox && (
+          <div className="absolute inset-14 border border-[#C5A059]/10 bg-white/40 backdrop-blur-sm rounded-lg z-30" />
+        )}
 
-        {/* Content Box */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-14 z-40">
-          {config.showContentBox && (
-            <div className="absolute inset-14 border border-white/10 bg-black/40 backdrop-blur-md rounded-lg" />
-          )}
-
-          {/* Interactive Elements Container */}
+        {/* Interactive Elements Container */}
+        <div className="absolute inset-0 flex flex-col p-14 z-40">
           <div className={cn(
             "relative z-50 w-full h-full flex flex-col",
             config.textAlign === 'center' ? "items-center text-center" : "items-start text-left"
           )}>
             
             {/* Top Social Bar */}
-            <div className="absolute top-[-30px] left-0 right-0 flex items-center justify-between w-full font-oswald pointer-events-none z-50">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold tracking-widest text-[#d4af37]">WWW.DEWANFATWA.COM</span>
-                <div className="h-4 w-[1px] bg-[#d4af37]/30 mx-1" />
-                <div className="flex gap-1.5 text-[#d4af37]">
-                   <span className="material-symbols-outlined text-[14px] border border-[#d4af37] rounded-sm p-[1px]">public</span>
-                   <span className="material-symbols-outlined text-[14px] border border-[#d4af37] rounded-sm p-[1px]">camera_alt</span>
-                   <span className="material-symbols-outlined text-[14px] border border-[#d4af37] rounded-sm p-[1px]">send</span>
+            <div className="absolute top-[-30px] left-0 right-0 flex items-start justify-between w-full font-oswald pointer-events-none z-50 px-2">
+              <div className="flex items-center gap-3">
+                <span className="text-[12px] font-bold tracking-tight text-[#C5A059]">www.dewanfatwa.com</span>
+                <div className="h-6 w-[1.5px] bg-[#C5A059] opacity-40 mx-1" />
+                <div className="flex gap-2 text-[#C5A059] items-center">
+                   {/* Custom Icon Group matching SS 1 */}
+                   <div className="flex gap-1.5 items-center">
+                     <Facebook size={14} strokeWidth={3} />
+                     <Camera size={14} strokeWidth={3} />
+                     <Send size={14} strokeWidth={3} />
+                     <Twitter size={14} strokeWidth={3} />
+                   </div>
+                   <span className="text-[12px] font-bold text-[#C5A059] tracking-tight ml-1">@DewanFatwaPA</span>
                 </div>
-                <span className="text-[11px] font-bold text-[#d4af37] tracking-tight ml-1">@DewanFatwaPA</span>
               </div>
-              <div className="relative w-12 h-12">
-                 <img src="https://res.cloudinary.com/dwehn7brt/image/upload/v1740000000/dewan-fatwa-logo.png" alt="Logo" className="w-full h-full object-contain opacity-90" onError={(e) => e.currentTarget.style.display = 'none'} />
+              <div className="relative w-16 h-16 -mt-2">
+                 <img src="https://res.cloudinary.com/dwehn7brt/image/upload/v1740000000/dewan-fatwa-logo.png" alt="Logo" className="w-full h-full object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
               </div>
             </div>
             
@@ -155,23 +153,22 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
                 animate={config.elementPositions.logo}
                 className="cursor-move z-60 mb-4"
               >
-                <div className="relative w-16 h-16 opacity-90 mix-blend-screen drop-shadow-2xl">
+                <div className="relative w-16 h-16 opacity-90 drop-shadow-xl">
                   <Image src={config.logo} alt="Logo" fill className="object-contain" />
                 </div>
               </motion.div>
             )}
 
-            {/* Header */}
-            <div className="w-full flex flex-col items-center pointer-events-none">
-              <div className="h-[1px] w-12 bg-[#d4af37] mb-6" />
+            {/* Header / Title */}
+            <div className="w-full flex flex-col items-center pointer-events-none mt-20 mb-12">
               <motion.h2 
                 key={config.headline}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="uppercase tracking-[0.2em] text-[24px] font-bold mb-4 font-oswald"
-                style={{ color: config.accentColor }}
+                className="uppercase tracking-[0.2em] text-[28px] font-bold font-oswald"
+                style={{ color: '#C5A059' }}
               >
-                {config.headline || "DAILY NASEHAT"}
+                {config.headline || "ADAB BERTEMAN"}
               </motion.h2>
             </div>
 
@@ -187,7 +184,7 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
             >
               <div
                 className={cn(
-                  "leading-snug text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] font-montserrat",
+                  "leading-snug text-black font-montserrat font-medium",
                   quoteFontSizeClass
                 )}
                 style={quoteFontSizeStyle}
@@ -196,52 +193,49 @@ export default function FlyerPreview({ config, setConfig, previewRef }: FlyerPre
               </div>
             </motion.div>
 
-            {/* Source & Footer (Static at bottom for balance) */}
-            <div className="w-full space-y-12 pointer-events-none mt-auto">
-              <div className="flex items-start gap-4 justify-center">
-                <span className="material-symbols-outlined text-[40px] text-white/20 -mt-2">format_quote</span>
-                <div className="flex flex-col gap-1 items-center">
-                  <div className="h-[1px] w-4 bg-neutral-800" />
+            {/* Source & Footer */}
+            <div className="w-full space-y-8 pointer-events-none mt-auto mb-16">
+              <div className="flex items-center justify-center gap-2">
                 <motion.p 
                   key={config.source}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-[11px] font-bold uppercase tracking-[0.1em] text-neutral-400 font-oswald"
+                  className="text-[12px] font-bold uppercase tracking-[0.05em] text-black font-oswald"
                 >
                   {config.source}
                 </motion.p>
-                <div className="h-[1px] w-4 bg-neutral-800" />
-                </div>
               </div>
 
-              <div className="flex justify-between items-end w-full">
-                <div className="text-left space-y-1">
-                  <p className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold font-oswald">Official Account</p>
-                  <p className="text-[10px] font-bold text-neutral-400 tracking-tight font-oswald">{config.socialHandle || "@usernasehat"}</p>
+              <div className="flex justify-between items-end w-full border-t border-black/5 pt-4">
+                <div className="text-left space-y-0.5">
+                  <p className="text-[9px] uppercase tracking-widest text-[#C5A059] font-bold font-oswald">Official Account</p>
+                  <p className="text-[11px] font-bold text-black tracking-tight font-oswald">{config.socialHandle || "@daily_nasehat"}</p>
                 </div>
                 {config.footer && (
-                  <div className="text-right space-y-1">
-                    <p className="text-[8px] uppercase tracking-widest text-[#d4af37] font-bold font-oswald">Reminder</p>
-                    <p className="text-[10px] font-bold text-neutral-400 tracking-tight font-oswald">{config.footer}</p>
+                  <div className="text-right space-y-0.5">
+                    <p className="text-[9px] uppercase tracking-widest text-[#C5A059] font-bold font-oswald">Reminder</p>
+                    <p className="text-[11px] font-bold text-black tracking-tight font-oswald">{config.footer}</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
         </div>
-        {/* Layer 5: Master Template Bottom Bar (Slanted) */}
-        <div className="absolute bottom-0 left-0 right-0 h-16 z-50 pointer-events-none overflow-hidden">
-           {/* Gold Slanted Base */}
+
+        {/* Layer 5: Master Template Bottom Bar (Slanted Design matching SS 1) */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 z-50 pointer-events-none">
+           {/* Black Slanted Base - Bottom layer */}
            <div 
-             className="absolute bottom-0 left-0 right-0 h-10 bg-[#d4af37]" 
-             style={{ clipPath: 'polygon(0 40%, 100% 0, 100% 100%, 0% 100%)' }}
+             className="absolute bottom-0 left-0 right-0 h-16 bg-black"
+             style={{ clipPath: 'polygon(0 0, 100% 60%, 100% 100%, 0 100%)' }}
            />
-           {/* Black Slanted Overlay */}
+           {/* Gold Slanted Bar - Top layer */}
            <div 
-             className="absolute bottom-0 left-0 right-0 h-12 bg-[#121212]" 
-             style={{ clipPath: 'polygon(0 100%, 100% 60%, 100% 100%, 0% 100%)', transform: 'translateY(1px)' }}
+             className="absolute bottom-8 left-0 right-0 h-4 bg-[#C5A059]"
+             style={{ clipPath: 'polygon(0 0, 100% 60%, 100% 100%, 0 100%)' }}
            />
         </div>
+
       </div>
     </div>
   );
